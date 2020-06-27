@@ -15,10 +15,10 @@ where
     data TakAction = Colocar Int Ficha | Mover Int Int Ficha deriving (Eq,Show)
 
     beginning3x3 :: TakGame -- El estado inicial del juego Tak con un tablero de 3x3, con el tablero vacío. 
-    beginning3x3 = ConstructorTakGame [ ConstructorCasilla [] | x <- [1..9]] WhitePlayer
+    beginning3x3 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..9]] WhitePlayer
     
     beginning4x4 :: TakGame -- El estado inicial del juego Tak con un tablero de 4x4, con el tablero vacío. 
-    beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | x <- [1..16]] WhitePlayer
+    beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..16]] WhitePlayer
     
     activePlayer :: TakGame -> TakPlayer -- Esta función determina a cuál jugador le toca mover, dado un estado de juego.
     activePlayer (ConstructorTakGame _ WhitePlayer) = WhitePlayer
@@ -144,10 +144,13 @@ where
     
 
     showTablero :: Tablero -> String
-    showTablero tablero = foldr1 (++) (map showCasilla tablero)
+    showTablero tablero = foldr1 (++) (indiceYCasilla)
         where
-            showCasillaConIndices = [ x++" "++ show (y) | x <- showCasillas, y <- [1..(length showCasillas + 1)]]
-            showCasillas = map showCasilla tablero
+            stringCasillas = map showCasilla tablero
+            stringIndices = map show [1..(length tablero)]
+            indiceYCasilla = zipWith (++) stringIndices stringCasillas
+            --indiceYCasilla = stringIndices
+            
 
 
     -- data Ficha = ConstructorFicha Orientacion TakPlayer deriving (Eq,Show)
