@@ -3,38 +3,30 @@ module Tak
 where
 
     data TakPlayer = WhitePlayer | BlackPlayer deriving (Eq, Show, Enum)
-    --unir los tipos algebraicos orientacion + ficha
-    data Orientacion = Horizontal | Vertical deriving (Eq, Show, Enum)
     
-    data Ficha = ConstructorFicha Orientacion TakPlayer deriving (Eq,Show)
+    data Ficha = Horizontal TakPlayer | Vertical TakPlayer deriving (Eq,Show)
     
-    data Casilla = ConstructorCasilla [Ficha] Int deriving (Eq,Show)
+    data Casilla = ConstructorCasilla [Ficha] deriving (Eq,Show)
                                             -- (0,0)
     type Tablero = [Casilla]
-    --en vez de booleano, usar takPlayer
-    data TakGame = ConstructorTakGame Tablero Bool deriving (Eq,Show)
+
+    data TakGame = ConstructorTakGame Tablero TakPlayer deriving (Eq,Show)
     --hacer Mover Int Int Ficha
-    data TakAction = Colocar Int Ficha | Mover Casilla Casilla Ficha deriving (Eq,Show)
+    data TakAction = Colocar Int Ficha | Mover Int Int Ficha deriving (Eq,Show)
 
     beginning3x3 :: TakGame -- El estado inicial del juego Tak con un tablero de 3x3, con el tablero vacío. 
-    beginning3x3 = ConstructorTakGame [ ConstructorCasilla [] x | x <- [1..9]] True
+    beginning3x3 = ConstructorTakGame [ ConstructorCasilla [] | x <- [1..9]] WhitePlayer
     
     beginning4x4 :: TakGame -- El estado inicial del juego Tak con un tablero de 4x4, con el tablero vacío. 
-    beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] x | x <- [1..16]] True
+    beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | x <- [1..16]] WhitePlayer
     
     activePlayer :: TakGame -> TakPlayer -- Esta función determina a cuál jugador le toca mover, dado un estado de juego.
-    activePlayer (ConstructorTakGame _ True) = WhitePlayer
-    activePlayer (ConstructorTakGame _ False) = BlackPlayer
+    activePlayer (ConstructorTakGame _ WhitePlayer) = WhitePlayer
+    activePlayer (ConstructorTakGame _ BlackPlayer) = BlackPlayer
 
     casillaVacia :: Casilla -> Bool
-    casillaVacia (ConstructorCasilla [] _) = True
+    casillaVacia (ConstructorCasilla [] ) = True
     otherwise = False
-
-    casillasVacias :: TakGame -> Tablero
-    casillasVacias (ConstructorTakGame lista _) = filter casillaVacia lista
-
-    getPosicionCasilla :: Casilla -> Int
-    getPosicionCasilla (ConstructorCasilla _ ind) = ind
     
     actions :: TakGame -> [(TakPlayer, [TakAction])] -- La lista debe incluir una y solo una tupla para cada jugador. 
                                                      -- Si el jugador está activo, la lista asociada debe incluir todos sus 
@@ -43,13 +35,15 @@ where
         |activo==WhitePlayer = [(BlackPlayer,[]) , (WhitePlayer, [Colocar cas fichaBlanca | cas <- posicionesVacias ]  ) ]
         |activo==BlackPlayer = [(BlackPlayer, [Colocar cas fichaNegra | cas <- posicionesVacias]  ) , (WhitePlayer,[]) ]
         where
-                activo = activePlayer juego 
-                vacias = casillasVacias juego                                      
-                fichaBlanca = ConstructorFicha Horizontal WhitePlayer
-                fichaNegra = ConstructorFicha Horizontal BlackPlayer
-                posicionesVacias = map getPosicionCasilla vacias
+                activo = activePlayer juego                           
+                fichaBlanca = Horizontal WhitePlayer
+                fichaNegra = Horizontal BlackPlayer
+                posicionesVacias = [y | x <- (getTablero juego) ,  y <- [0..(length (getTablero juego) )]  , casillaVacia x]
     actions _ = error "no existis"        
     
+    getTablero :: TakGame -> Tablero
+    getTablero (ConstructorTakGame tablero _) = tablero
+
     -- setLista :: (Eq a) => [a] -> Int -> a -> [a]
     -- setLista lista 0 ele = ele : subLista lista (1) (length lista)
     -- setLista lista lugar ele = subLista lista 0 (lugar-1) ++ [ele] ++  subLista lista (lugar+1) (length lista)
@@ -66,11 +60,11 @@ where
         |True = [if x==posicion then ele else lista!!x | x <- [0..(length lista-1)] ]
     
     apilarFicha :: Casilla -> Ficha -> Casilla
-    apilarFicha (ConstructorCasilla fichas ind) fichaNueva = (ConstructorCasilla (fichaNueva:(fichas)) ind)
+    apilarFicha (ConstructorCasilla fichas) fichaNueva = (ConstructorCasilla (fichaNueva:(fichas)))
 
     next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
                                                          -- jugador activo, si el juego está terminado, o si la acción no es realizable. 
-    next (ConstructorTakGame casillas turno) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (not turno)                                                    -- el estado resultante. Se debe levantar un error si el jugador dado no es el 
+    next (ConstructorTakGame casillas WhitePlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (BlackPlayer)                                                    -- el estado resultante. Se debe levantar un error si el jugador dado no es el 
     next _ _ = error "no implementado"                                                
     
 
@@ -79,24 +73,28 @@ where
         where
             nuevoTablero = setLista tablero (posicion-1) nuevaCasilla
             laCasilla = tablero!!posicion
-            nuevaCasilla = apilarFicha laCasilla (ConstructorFicha Horizontal WhitePlayer)
+            nuevaCasilla = apilarFicha laCasilla (Horizontal WhitePlayer)
     colocar tablero (BlackPlayer, (Colocar posicion fichaNegra)) = nuevoTablero
         where
             nuevoTablero = setLista tablero (posicion-1) nuevaCasilla
             laCasilla = tablero!!posicion
-            nuevaCasilla = apilarFicha laCasilla (ConstructorFicha Horizontal BlackPlayer)
+            nuevaCasilla = apilarFicha laCasilla (Horizontal BlackPlayer)
     colocar _ _ = error "no implementado"
 
     tableroLleno :: Tablero -> Bool
     tableroLleno tablero = length (filter casillaVacia tablero) == 0
 
     fichaDeArriba :: Casilla -> Ficha
-    fichaDeArriba (ConstructorCasilla fichas num) = last fichas
+    fichaDeArriba (ConstructorCasilla fichas) = last fichas
+
+    getJugadorEnFicha :: Ficha -> TakPlayer
+    getJugadorEnFicha (Horizontal jug) = jug
+    getJugadorEnFicha (Vertical jug) = jug
 
     casillaDeJugador :: TakPlayer -> Casilla -> Bool
     casillaDeJugador jugador casilla = jugador == jug
         where
-            (ConstructorFicha ori jug) = fichaDeArriba casilla
+            jug = getJugadorEnFicha (fichaDeArriba casilla)
         
     posicionesLlenas :: Tablero -> [Int] -> Bool
     posicionesLlenas tablero posiciones = foldr1 (&&) llenas
@@ -127,35 +125,36 @@ where
         |posicionesLlenas tableroSoloConFichasJugador [4,5,2,3] = True
         |True  = False
         where
-            tableroSoloConFichasJugador = map (vaciarCasillaSi jugador) tablero
+            tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
     
-    getIndiceCasilla :: Casilla -> Int
-    getIndiceCasilla (ConstructorCasilla _ ind) = ind
-    
-    vaciarCasillaSi :: TakPlayer -> Casilla -> Casilla
-    vaciarCasillaSi jugador casilla
-        |jugador==jug = casilla
-        |True = ConstructorCasilla [] (getIndiceCasilla casilla)
-            where
-                (ConstructorFicha ori jug) = fichaDeArriba casilla
+    vaciarCasillaSiNoEsDeJugador :: TakPlayer -> Casilla -> Casilla
+    vaciarCasillaSiNoEsDeJugador jugador casilla
+        |casillaDeJugador jugador casilla = casilla
+        |True = ConstructorCasilla []
 
     showFicha :: Ficha -> String
-    showFicha (ConstructorFicha ori ply) = show (ori) ++ "-" ++show (ply) ++ ","
+    showFicha (Horizontal ply) = "Horizontal" ++ "-" ++show (ply) ++ ","
+    showFicha (Vertical ply) = "Vertical" ++ "-" ++show (ply) ++ ","
 
 
---putStr (showGame beginning3x3)
+    --putStr (showGame beginning3x3)
     showCasilla :: Casilla -> String
-    showCasilla (ConstructorCasilla [] ind) = show(ind) ++ " casilla vacia" ++ "\n"
-    showCasilla (ConstructorCasilla fichas ind) = (show(ind) ++" "++ (foldr1 (++) (map showFicha fichas))) ++ "\n"
+    showCasilla (ConstructorCasilla []) = " casilla vacia" ++ "\n"
+    showCasilla (ConstructorCasilla fichas) = (foldr1 (++) (map showFicha fichas)) ++ "\n"
     
 
     showTablero :: Tablero -> String
-    showTablero tablero = foldr1 (++) (map showCasilla tablero)  
+    showTablero tablero = foldr1 (++) (map showCasilla tablero)
+        where
+            showCasillaConIndices = [ x++" "++ show (y) | x <- showCasillas, y <- [1..(length showCasillas + 1)]]
+            showCasillas = map showCasilla tablero
+
+
     -- data Ficha = ConstructorFicha Orientacion TakPlayer deriving (Eq,Show)
     --data TakGame = ConstructorTakGame Tablero Bool deriving (Eq,Show)
     showGame :: TakGame -> String -- Convierte el estado de juego a un texto que puede ser impreso en la consola para mostrar el tablero y demás información de la partida. 
-    showGame (ConstructorTakGame tablero True) = "Le toca a Blancas " ++ "\n" ++  (showTablero tablero)
-    showGame (ConstructorTakGame tablero False) = "Le toca a Negras "++ "\n" ++ (showTablero tablero)
+    showGame (ConstructorTakGame tablero WhitePlayer) = "Le toca a Blancas " ++ "\n" ++  (showTablero tablero)
+    showGame (ConstructorTakGame tablero BlackPlayer) = "Le toca a Negras "++ "\n" ++ (showTablero tablero)
     
     printGame :: TakGame -> IO ()
     printGame juego = putStr (showGame juego)
