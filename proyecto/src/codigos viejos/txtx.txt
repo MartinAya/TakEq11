@@ -1,0 +1,5 @@
+abs (Stones (-1.0)) 
+fromInteger(Stones 1.0)
+inOrder (Node 1 (Node 3 Empty Empty) (Node 5 Empty Empty))
+
+        
