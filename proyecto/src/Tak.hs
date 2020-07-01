@@ -143,8 +143,8 @@ where
     showCasilla (ConstructorCasilla fichas) = (foldr1 (++) (map showFicha fichas)) ++ "\n"
     
 
-    showTablero :: Tablero -> String
-    showTablero tablero = foldr1 (++) (indiceYCasilla)
+    showBoard :: Tablero -> String
+    showBoard tablero = foldr1 (++) (indiceYCasilla)
         where
             stringCasillas = map showCasilla tablero
             stringIndices = map show [1..(length tablero)]
