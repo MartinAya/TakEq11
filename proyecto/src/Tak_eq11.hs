@@ -44,19 +44,18 @@ beginning3x3 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..9]] WhitePl
 beginning4x4 :: TakGame -- El estado inicial del juego Tak con un tablero de 4x4, con el tablero vacío. 
 beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..16]] WhitePlayer
 
-actions :: TakGame -> [(TakPlayer, [TakAction])] -- La lista debe incluir una y solo una tupla para cada jugador. 
-                                                     -- Si el jugador está activo, la lista asociada debe incluir todos sus 
-                                                     -- posibles movimientos para el estado de juego dado. Sino la lista debe estar vacía.
-
-actions juego                                    
-    |activo==Nothing = [(BlackPlayer,[]),(WhitePlayer,[])]
-    |activo==(Just WhitePlayer) = [(BlackPlayer,[]) , (WhitePlayer, [Colocar cas fichaBlanca | cas <- posicionesVacias ]  ) ]
-    |activo==(Just BlackPlayer) = [(BlackPlayer, [Colocar cas fichaNegra | cas <- posicionesVacias]  ) , (WhitePlayer,[]) ]
-        where
-                activo =  activePlayer juego           
-                fichaBlanca = Horizontal WhitePlayer
-                fichaNegra = Horizontal BlackPlayer
-                posicionesVacias = [y | x <- (getTablero juego) ,  y <- [0..(length (getTablero juego) )]  , casillaVacia x]
+-- La lista debe incluir una y solo una tupla para cada jugador. 
+-- Si el jugador está activo, la lista asociada debe incluir todos sus 
+-- posibles movimientos para el estado de juego dado. Sino la lista debe estar vacía.
+actions :: TakGame -> [(TakPlayer, [TakAction])]
+--actions juego = [(BlackPlayer,[]) , (WhitePlayer, [Colocar cas fichaBlanca | cas <- posicionesVacias ]  ) ]
+actions (ConstructorTakGame tablero activo)                                    
+      |activo==WhitePlayer = [(BlackPlayer,[]) , (WhitePlayer, [Colocar cas fichaBlanca | cas <- posicionesVacias ]  ) ]
+      |activo== BlackPlayer = [(BlackPlayer, [Colocar cas fichaNegra | cas <- posicionesVacias]  ) , (WhitePlayer,[]) ]
+        where      
+            fichaBlanca = Horizontal WhitePlayer
+            fichaNegra = Horizontal BlackPlayer
+            posicionesVacias = [    x| x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
 actions _ = error "no existis" 
 
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
@@ -66,7 +65,7 @@ next _ _ = error "no implementado"
 
 casillaVacia :: Casilla -> Bool
 casillaVacia (ConstructorCasilla [] ) = True
-otherwise = False
+casillaVacia _ = False
 
 getTablero :: TakGame -> Tablero
 getTablero (ConstructorTakGame tablero _) = tablero
@@ -75,10 +74,6 @@ setLista :: (Eq a) => [a] -> Int -> a -> [a]
 setLista lista posicion ele
    |posicion < 0 || posicion > (length lista - 1)= error "indice invalido"
    |True = [if x==posicion then ele else lista!!x | x <- [0..(length lista-1)] ]
-
-
-
-
 
 result :: TakGame -> [(TakPlayer, Int)]
 result (ConstructorTakGame _ _) = zip players (if True then [] else [1, -1]) --TODO
