@@ -12,6 +12,7 @@ module TicTacToe_eq11 where
 
 import Data.Maybe (fromJust, listToMaybe)
 import Data.List (elemIndex)
+import Data.List.Split
 {- Es posible que el paquete `System.Random` no esté disponible si se instaló el core de la Haskell 
 Platform en el sistema. Para instalarlo, ejecutar los siguientes comandos:
 

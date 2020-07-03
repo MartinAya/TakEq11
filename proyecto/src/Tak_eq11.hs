@@ -9,9 +9,10 @@ Leonardo Val, Ignacio Pacheco.
 -}
 module Tak where
 
-import Data.Maybe (fromJust, listToMaybe)
+import Data.Maybe
 import Data.List (elemIndex)
 import System.Random --para que cargue bien usar stack ghci
+import Data.List.Split
 
 {- Es posible que el paquete `System.Random` no esté disponible si se instaló el core de la Haskell 
 Platform en el sistema. Para instalarlo, ejecutar los siguientes comandos:
@@ -32,10 +33,15 @@ a los módulos necesarios.
 
 data Ficha = Horizontal TakPlayer | Vertical TakPlayer deriving (Eq,Show)
 type Tablero = [Casilla]
-data TakPlayer = WhitePlayer | BlackPlayer deriving (Eq, Show, Enum, Bounded)
+data TakPlayer = WhitePlayer | BlackPlayer deriving (Eq, Enum, Bounded)
 data TakGame = ConstructorTakGame Tablero TakPlayer deriving (Eq,Show)
-data TakAction = Colocar Int Ficha | Mover Int Int Ficha deriving (Eq,Show)
+data TakAction = Colocar Int Ficha | Mover Int Int Ficha deriving (Eq, Show)
 data Casilla = ConstructorCasilla [Ficha] deriving (Eq,Show)
+
+
+instance Show TakPlayer where
+   show WhitePlayer = "W"
+   show BlackPlayer = "B"
 
 
 beginning3x3 :: TakGame -- El estado inicial del juego Tak con un tablero de 3x3, con el tablero vacío. 
@@ -56,12 +62,13 @@ actions (ConstructorTakGame tablero activo)
             fichaBlanca = Horizontal WhitePlayer
             fichaNegra = Horizontal BlackPlayer
             posicionesVacias = [    x| x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
-actions _ = error "no existis" 
+actions _ = error "actions: error" 
 
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
                                                          -- jugador activo, si el juego está terminado, o si la acción no es realizable. 
-next (ConstructorTakGame casillas WhitePlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (BlackPlayer)                                                    -- el estado resultante. Se debe levantar un error si el jugador dado no es el 
-next _ _ = error "no implementado" 
+next (ConstructorTakGame casillas WhitePlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (BlackPlayer)    
+next (ConstructorTakGame casillas BlackPlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (WhitePlayer)                                                
+next _ _ = error "next: no implementado" -- el estado resultante. Se debe levantar un error si el jugador dado no es el 
 
 casillaVacia :: Casilla -> Bool
 casillaVacia (ConstructorCasilla [] ) = True
@@ -81,11 +88,37 @@ result (ConstructorTakGame _ _) = zip players (if True then [] else [1, -1]) --T
 --score :: TakGame -> [(TakPlayer, Int)]
 --score _ = zip players [0, 0] --TODO
 
+
+coordenadas3X3 :: [(Int,Int)] 
+coordenadas3X3 = map (\n -> divMod n 3) [0..8]
+
+intA3x3 :: Int -> (Int,Int)
+intA3x3 posicion =  coords !! posicion 
+   where
+      coords = coordenadas3X3
+
+tx3Aint :: (Int,Int) -> Int
+tx3Aint tupla = if (resultado==Nothing) 
+   then error "coordenadas no válidas" 
+   else fromMaybe 0 resultado
+      --Nothing
+      --Just 8
+      where resultado = elemIndex tupla coordenadas3X3
+      
 showAction :: TakAction -> String
-showAction a = show a --TODO
+showAction (Colocar int ficha) = "C " ++ show (intA3x3 int) ++" "++ showFicha (ficha)
    
 readAction :: String -> TakAction
-readAction _ = (Colocar 1 (Horizontal WhitePlayer)) --TODO
+readAction entrada
+   |accion =="C" && orientacion=="H" =  Colocar posicion (Horizontal juga)
+   where
+      --caso colocar: C,0,1,H,W
+      [accion,ind1,ind2,orientacion,jugador] = splitOn "," entrada
+      posicion = tx3Aint (read (ind1), read (ind2))
+      juga = if jugador=="W" then WhitePlayer else if jugador=="B" then BlackPlayer else error "jugador no valido"
+readAction _ = error "accion no valida o no implementada"
+   
+      
 
 -- activePlayer :: TakGame -> Maybe TakPlayer
 -- activePlayer g = listToMaybe [p | (p, as) <- actions g, not (null as)]
@@ -105,12 +138,12 @@ apilarFicha (ConstructorCasilla fichas) fichaNueva = (ConstructorCasilla (fichaN
 colocar :: Tablero -> (TakPlayer, TakAction) -> Tablero
 colocar tablero (WhitePlayer, (Colocar posicion fichaBlanca)) = nuevoTablero
       where
-            nuevoTablero = setLista tablero (posicion-1) nuevaCasilla
+            nuevoTablero = setLista tablero (posicion) nuevaCasilla
             laCasilla = tablero!!posicion
             nuevaCasilla = apilarFicha laCasilla (Horizontal WhitePlayer)
 colocar tablero (BlackPlayer, (Colocar posicion fichaNegra)) = nuevoTablero
       where
-            nuevoTablero = setLista tablero (posicion-1) nuevaCasilla
+            nuevoTablero = setLista tablero (posicion) nuevaCasilla
             laCasilla = tablero!!posicion
             nuevaCasilla = apilarFicha laCasilla (Horizontal BlackPlayer)
 colocar _ _ = error "no implementado"
@@ -168,13 +201,13 @@ vaciarCasillaSiNoEsDeJugador jugador casilla
         |True = ConstructorCasilla []
 
 showFicha :: Ficha -> String
-showFicha (Horizontal ply) = "Horizontal" ++ "-" ++show (ply) ++ ","
-showFicha (Vertical ply) = "Vertical" ++ "-" ++show (ply) ++ ","
+showFicha (Horizontal ply) = " H" ++ "-" ++show (ply) 
+showFicha (Vertical ply) = " V" ++ "-" ++show (ply) 
 
 
 --putStr (showGame beginning3x3)
 showCasilla :: Casilla -> String
-showCasilla (ConstructorCasilla []) = " casilla vacia" ++ "\n"
+showCasilla (ConstructorCasilla []) = " vacia" ++ "\n"
 showCasilla (ConstructorCasilla fichas) = (foldr1 (++) (map showFicha fichas)) ++ "\n"
     
 
@@ -182,9 +215,8 @@ showTablero :: Tablero -> String
 showTablero tablero = foldr1 (++) (indiceYCasilla)
         where
             stringCasillas = map showCasilla tablero
-            stringIndices = map show [1..(length tablero)]
-            indiceYCasilla = zipWith (++) stringIndices stringCasillas
-            --indiceYCasilla = stringIndices
+            stringIndices = map (\n -> divMod n 3) [0..8]
+            indiceYCasilla = zipWith (++) (map show stringIndices) stringCasillas
 
 showBoard :: TakGame -> String -- Convierte el estado de juego a un texto que puede ser impreso en la consola para mostrar el tablero y demás información de la partida. 
 showBoard (ConstructorTakGame tablero WhitePlayer) = "Le toca a Blancas " ++ "\n" ++  (showTablero tablero)
@@ -240,7 +272,7 @@ consoleAgent player state = do
       getLine
       return Nothing
    else do
-      putStrLn ("Select one move:" ++ concat [" "++ show m | m <- moves])
+      putStrLn ("Select one move:" ++ concat ["\n"++ showAction m | m <- moves])--se cambio show por showAction
       line <- getLine
       let input = readAction line
       if elem input moves then return (Just input) else do 
