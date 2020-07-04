@@ -82,11 +82,23 @@ setLista lista posicion ele
    |posicion < 0 || posicion > (length lista - 1)= error "indice invalido"
    |True = [if x==posicion then ele else lista!!x | x <- [0..(length lista-1)] ]
 
-result :: TakGame -> [(TakPlayer, Int)]
-result (ConstructorTakGame _ _) = zip players (if True then [] else [1, -1]) --TODO
 
---score :: TakGame -> [(TakPlayer, Int)]
---score _ = zip players [0, 0] --TODO
+score :: TakGame -> [(TakPlayer, Int)]
+score _ = zip players [8, 8] --TODO
+
+
+result :: TakGame -> [(TakPlayer, Int)]
+-- 1 es que ganó, (-1) perdió, 0 empató
+-- se asume que cuando se llama a result, el juego ya terminó
+-- result evalua el estado actual para decir quien gano, o tirar un score
+result g@(ConstructorTakGame tablero jugadorActual)
+   |caminoCompletoWhite = [(WhitePlayer,1),(BlackPlayer,(-1))]
+   |caminoCompletoBlack = [(BlackPlayer,1),(WhitePlayer,(-1))]
+   |tablerollen = score g
+      where
+         caminoCompletoWhite = caminoCompleto tablero WhitePlayer
+         caminoCompletoBlack = caminoCompleto tablero BlackPlayer
+         tablerollen = tableroLleno tablero
 
 
 coordenadas3X3 :: [(Int,Int)] 
@@ -128,7 +140,15 @@ readAction _ = error "accion no valida o no implementada"
 -- activePlayer (ConstructorTakGame _ BlackPlayer) = BlackPlayer
 
 activePlayer :: TakGame -> Maybe TakPlayer
-activePlayer g = listToMaybe [p | (p, as) <- actions g, not (null as)]
+--activePlayer tiene que verificar si alguien completo un camino, y si es así, devolver Nothing
+activePlayer g@(ConstructorTakGame tablero _)
+   |(caminoCompleto tablero WhitePlayer) || (caminoCompleto tablero BlackPlayer) = Nothing
+   |True = listToMaybe [p | (p, as) <- actions g, not (null as)]
+
+--el caso en el que se lleno el tablero esta contemplado aca:
+--The listToMaybe function returns Nothing on an empty
+--list or Just a where a is the first element
+--of the list
 
 
 
@@ -151,18 +171,22 @@ colocar _ _ = error "no implementado"
 tableroLleno :: Tablero -> Bool
 tableroLleno tablero = length (filter casillaVacia tablero) == 0
 
-fichaDeArriba :: Casilla -> Ficha
-fichaDeArriba (ConstructorCasilla fichas) = last fichas
+fichaDeArriba :: Casilla -> Maybe Ficha
+fichaDeArriba (ConstructorCasilla fichas) = if fichas == [] then Nothing else (Just (last fichas))
 
-getJugadorEnFicha :: Ficha -> TakPlayer
-getJugadorEnFicha (Horizontal jug) = jug
-getJugadorEnFicha (Vertical jug) = jug
+
+getJugadorEnFicha :: Maybe Ficha -> Maybe TakPlayer
+getJugadorEnFicha Nothing = Nothing
+getJugadorEnFicha (Just (Horizontal jug)) = (Just jug)
+getJugadorEnFicha (Just (Vertical jug)) = (Just jug)
 
 
 casillaDeJugador :: TakPlayer -> Casilla -> Bool
-casillaDeJugador jugador casilla = jugador == jug
+casillaDeJugador jugador casilla
+   |juga==(Just jugador) = True
+   |True = False
         where
-            jug = getJugadorEnFicha (fichaDeArriba casilla)
+            juga = getJugadorEnFicha (fichaDeArriba casilla)
         
 posicionesLlenas :: Tablero -> [Int] -> Bool
 posicionesLlenas tablero posiciones = foldr1 (&&) llenas
@@ -172,28 +196,28 @@ posicionesLlenas tablero posiciones = foldr1 (&&) llenas
 caminoCompleto :: Tablero -> TakPlayer -> Bool
 caminoCompleto tablero jugador
 
-        --si existiera una funcion magica que tire cada una de estas listas se puede
-        --hacer un map o algo asi con todas
-        -- funcionMagica :: Tablero -> [[Int]]
-        |posicionesLlenas tableroSoloConFichasJugador [1,4,7] = True
-        |posicionesLlenas tableroSoloConFichasJugador [2,5,8] = True
-        |posicionesLlenas tableroSoloConFichasJugador [3,6,9] = True
+      --si existiera una funcion magica que tire cada una de estas listas se puede
+      --hacer un map o algo asi con todas
+      -- funcionMagica :: Tablero -> [[Int]]
+      |posicionesLlenas tableroSoloConFichasJugador [0,3,6] = True
+      |posicionesLlenas tableroSoloConFichasJugador [1,4,7] = True
+      |posicionesLlenas tableroSoloConFichasJugador [2,5,8] = True
 
-        |posicionesLlenas tableroSoloConFichasJugador [1,2,3] = True
-        |posicionesLlenas tableroSoloConFichasJugador [4,5,6] = True
-        |posicionesLlenas tableroSoloConFichasJugador [7,8,9] = True
+      |posicionesLlenas tableroSoloConFichasJugador [0,1,2] = True
+      |posicionesLlenas tableroSoloConFichasJugador [3,4,5] = True
+      |posicionesLlenas tableroSoloConFichasJugador [6,7,8] = True
 
-        |posicionesLlenas tableroSoloConFichasJugador [1,4,5,8] = True
-        |posicionesLlenas tableroSoloConFichasJugador [2,5,6,9] = True
-        |posicionesLlenas tableroSoloConFichasJugador [3,6,5,8] = True
-        |posicionesLlenas tableroSoloConFichasJugador [2,5,4,7] = True
-        |posicionesLlenas tableroSoloConFichasJugador [1,2,5,6] = True
-        |posicionesLlenas tableroSoloConFichasJugador [4,5,8,9] = True
-        |posicionesLlenas tableroSoloConFichasJugador [7,8,5,6] = True
-        |posicionesLlenas tableroSoloConFichasJugador [4,5,2,3] = True
-        |True  = False
-        where
-            tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
+      |posicionesLlenas tableroSoloConFichasJugador [0,3,4,7] = True
+      |posicionesLlenas tableroSoloConFichasJugador [1,4,5,8] = True
+      |posicionesLlenas tableroSoloConFichasJugador [2,5,4,7] = True
+      |posicionesLlenas tableroSoloConFichasJugador [1,4,3,6] = True
+      |posicionesLlenas tableroSoloConFichasJugador [0,1,4,5] = True
+      |posicionesLlenas tableroSoloConFichasJugador [3,4,7,8] = True
+      |posicionesLlenas tableroSoloConFichasJugador [6,7,4,5] = True
+      |posicionesLlenas tableroSoloConFichasJugador [3,4,1,2] = True
+      |True  = False
+      where
+         tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
 
 vaciarCasillaSiNoEsDeJugador :: TakPlayer -> Casilla -> Casilla
 vaciarCasillaSiNoEsDeJugador jugador casilla
