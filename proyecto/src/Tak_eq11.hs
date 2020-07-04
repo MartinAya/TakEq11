@@ -82,10 +82,36 @@ setLista lista posicion ele
    |posicion < 0 || posicion > (length lista - 1)= error "indice invalido"
    |True = [if x==posicion then ele else lista!!x | x <- [0..(length lista-1)] ]
 
+-- El score se calcula como la cantidad de fichas no jugadas por cada jugador.
+
+nFichasXJugador :: Tablero -> Int
+nFichasXJugador tablero
+   |casillas == 9 = 10
+   |casillas == 16 = 15
+   |casillas == 25 = 21
+   |casillas == 36 = 30
+   where
+      casillas = length tablero
+
+jugadorEnFicha :: TakPlayer -> Ficha -> Bool
+jugadorEnFicha jug (Horizontal jugador) = jug == jugador 
+jugadorEnFicha jug (Vertical jugador) = jug == jugador
+
+
+fichasDeJugadorCasilla :: TakPlayer -> Casilla -> Int
+fichasDeJugadorCasilla jugador (ConstructorCasilla fichas) = length (filter (jugadorEnFicha jugador) fichas)
+
+
+fichasDeJugador :: Tablero -> TakPlayer -> Int
+fichasDeJugador tablero jugador = foldr1 (+) (map (fichasDeJugadorCasilla jugador) tablero)
+      
 
 score :: TakGame -> [(TakPlayer, Int)]
-score _ = zip players [8, 8] --TODO
-
+score (ConstructorTakGame tablero _) = zip players [scoreBlancas, scoreNegras]
+   where
+      fichasTotales = nFichasXJugador tablero
+      scoreBlancas = fichasTotales - (fichasDeJugador tablero WhitePlayer)
+      scoreNegras = fichasTotales - (fichasDeJugador tablero BlackPlayer)
 
 result :: TakGame -> [(TakPlayer, Int)]
 -- 1 es que ganó, (-1) perdió, 0 empató
@@ -93,13 +119,31 @@ result :: TakGame -> [(TakPlayer, Int)]
 -- result evalua el estado actual para decir quien gano, o tirar un score
 result g@(ConstructorTakGame tablero jugadorActual)
    |caminoCompletoWhite = [(WhitePlayer,1),(BlackPlayer,(-1))]
-   |caminoCompletoBlack = [(BlackPlayer,1),(WhitePlayer,(-1))]
-   |tablerollen = score g
+   |caminoCompletoBlack = [(WhitePlayer,(-1)),(BlackPlayer,(1))]
+   |tablerollen = [(WhitePlayer,0),(BlackPlayer,(0))]
       where
          caminoCompletoWhite = caminoCompleto tablero WhitePlayer
          caminoCompletoBlack = caminoCompleto tablero BlackPlayer
          tablerollen = tableroLleno tablero
 
+ganador :: [(TakPlayer, Int)] -> Maybe TakPlayer
+ganador [(WhitePlayer,1),(BlackPlayer,(-1))] = Just WhitePlayer
+ganador [(WhitePlayer,(-1)),(BlackPlayer,1)] = Just BlackPlayer
+ganador [(WhitePlayer,(0)),(BlackPlayer,0)] = Nothing
+
+agregarPuntajeTablero :: Maybe TakPlayer -> Int -> [(TakPlayer, Int)] -> [(TakPlayer, Int)]
+agregarPuntajeTablero Nothing puntajeTablero puntaje = puntaje
+agregarPuntajeTablero (Just WhitePlayer) puntajeTablero [(WhitePlayer,p1),(BlackPlayer,p2)] = [(WhitePlayer,p1+puntajeTablero),(BlackPlayer,p2)]
+agregarPuntajeTablero (Just BlackPlayer) puntajeTablero [(WhitePlayer,p1),(BlackPlayer,p2)] = [(WhitePlayer,p1),(BlackPlayer,p2+puntajeTablero)]
+
+scoreYResult :: TakGame -> [(TakPlayer, Int)]
+scoreYResult game@(ConstructorTakGame tablero _) = resultado ++ puntajeConTablero 
+   where 
+      resultado = result game
+      elGanador = ganador resultado
+      puntajeSinTablero = score game 
+      puntajeTablero = length tablero
+      puntajeConTablero = agregarPuntajeTablero elGanador puntajeTablero puntajeSinTablero
 
 coordenadas3X3 :: [(Int,Int)] 
 coordenadas3X3 = map (\n -> divMod n 3) [0..8]
@@ -120,6 +164,8 @@ tx3Aint tupla = if (resultado==Nothing)
 showAction :: TakAction -> String
 showAction (Colocar int ficha) = "C " ++ show (intA3x3 int) ++" "++ showFicha (ficha)
    
+
+
 readAction :: String -> TakAction
 readAction entrada
    |accion =="C" && orientacion=="H" =  Colocar posicion (Horizontal juga)
@@ -128,9 +174,13 @@ readAction entrada
       [accion,ind1,ind2,orientacion,jugador] = splitOn "," entrada
       posicion = tx3Aint (read (ind1), read (ind2))
       juga = if jugador=="W" then WhitePlayer else if jugador=="B" then BlackPlayer else error "jugador no valido"
+      --ejemplo mover: M, ,0,1, 1,1 [0,1,0]
+      --ejemplo mover2: M 0,0 , 0,1 [1,1,1]
+      --coordenas de la ficha,
+      --direccion (coordenas de otra casilla)
+      --lista con cunatas quiere dejar en cada posicion
 readAction _ = error "accion no valida o no implementada"
    
-      
 
 -- activePlayer :: TakGame -> Maybe TakPlayer
 -- activePlayer g = listToMaybe [p | (p, as) <- actions g, not (null as)]
@@ -252,7 +302,6 @@ players :: [TakPlayer]
 players = [minBound..maxBound]
 
 {-- Match controller -------------------------------------------------------------------------------
-
 Código de prueba. Incluye una función para correr las partidas y dos agentes: consola y aleatorio.
 
 -}
@@ -265,7 +314,7 @@ runMatch :: (TakAgent, TakAgent) -> TakGame -> IO [(TakPlayer, Int)]
 runMatch ags@(ag1, ag2) g = do
    putStrLn (showBoard g)
    case (activePlayer g) of
-      Nothing -> return $ result g
+      Nothing -> return $ scoreYResult g
       Just p -> do
          let ag = [ag1, ag2] !! (fromJust (elemIndex p players))
          move <- ag g
@@ -283,7 +332,6 @@ run3x3OnConsole = runOnConsole beginning3x3
 
 run4x4OnConsole :: IO [(TakPlayer, Int)]
 run4x4OnConsole = runOnConsole beginning4x4
-
 
 {- El agente de consola ´consoleAgent´ muestra el estado de juego y los movimientos disponibles por
 consola, y espera una acción por entrada de texto.
