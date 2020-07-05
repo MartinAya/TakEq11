@@ -1,3 +1,31 @@
 putStrLn (showBoard (Tak.next (beginning3x3) (WhitePlayer,Colocar 1 (Horizontal WhitePlayer))))
 
-map (\n -> divMod n 3) [0..8]
+prueba mover
+
+--mover :: Tablero -> (TakPlayer, TakAction) -> Tablero
+--colocar :: Tablero -> (TakPlayer, TakAction) -> Tablero
+
+colocar1 = Colocar 0 (Horizontal WhitePlayer)
+colocar2 = Colocar 0 (Horizontal WhitePlayer)
+mover1 = Mover 0 2 [1,1]
+
+t1 = colocar (getTablero beginning3x3) (WhitePlayer,colocar1)
+t2 = colocar t1 (WhitePlayer,colocar2)
+t3 = mover t2 (WhitePlayer,mover1)
+
+prueba apilarFichasEnCasillas
+
+--apilarFichasEnCasillas :: [Casilla] -> [Ficha] -> [Int] -> [Casilla]
+
+fichas = [Horizontal WhitePlayer, Horizontal BlackPlayer, Horizontal WhitePlayer]
+casillas = [ConstructorCasilla [], ConstructorCasilla []]
+
+apilarFichasEnCasillas casillas fichas [1,2]
+
+prueba desapilarDeCasilla
+
+--desapilarDeCasilla :: Casilla -> Int -> ([Ficha],Casilla)
+
+fichas = [Horizontal WhitePlayer, Horizontal BlackPlayer, Horizontal WhitePlayer]
+casilla = ConstructorCasilla fichas
+desapilarDeCasilla casilla 2

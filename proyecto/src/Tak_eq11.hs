@@ -50,27 +50,55 @@ beginning3x3 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..9]] WhitePl
 beginning4x4 :: TakGame -- El estado inicial del juego Tak con un tablero de 4x4, con el tablero vacío. 
 beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..16]] WhitePlayer
 
--- La lista debe incluir una y solo una tupla para cada jugador. 
--- Si el jugador está activo, la lista asociada debe incluir todos sus 
--- posibles movimientos para el estado de juego dado. Sino la lista debe estar vacía.
 actions :: TakGame -> [(TakPlayer, [TakAction])]
---actions juego = [(BlackPlayer,[]) , (WhitePlayer, [Colocar cas fichaBlanca | cas <- posicionesVacias ]  ) ]
-actions (ConstructorTakGame tablero activo)                                    
+actions g@(ConstructorTakGame tablero activo)                                    
+      -- COLOCAR
       |activo==WhitePlayer = [(BlackPlayer,[]) , (WhitePlayer, [Colocar cas fichaBlanca | cas <- posicionesVacias ]  ) ]
       |activo== BlackPlayer = [(BlackPlayer, [Colocar cas fichaNegra | cas <- posicionesVacias]  ) , (WhitePlayer,[]) ]
+
+      -- Mover     mover :: Tablero -> (TakPlayer, TakAction) -> Tablero   TakAction Mover Int Int [Int]   
+      |activo==WhitePlayer = [(BlackPlayer,[]) , (WhitePlayer, [Mover cas fichaBlanca | cas <- posicionesVacias ]  ) ]
+      |activo== BlackPlayer = [(BlackPlayer, [Mover cas fichaNegra | cas <- posicionesVacias]  ) , (WhitePlayer,[]) ]
+        
         where      
             fichaBlanca = Horizontal WhitePlayer
             fichaNegra = Horizontal BlackPlayer
-            posicionesVacias = [x| x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
+            posicionesVacias = [ x | x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
+            listaDeDesdes = posicionesDeJugador g
+      
 actions _ = error "actions: error"
---falta que actions tire posible TakAction mover
+
+-- mover :: Tablero -> (TakPlayer, TakAction) -> Tablero
+-- (a -> Bool) -> [a] -> [Int]
+-- findIndices (>3) [0,2,4,6,8]
+-- [2,3,4]
+-- casillaDeJugador :: TakPlayer -> Casilla -> Bool
+posicionesDeJugador :: TakGame -> [Int]
+posicionesDeJugador (ConstructorTakGame tablero activo) = indicesPosiciones
+      where
+         indicesPosiciones = findIndices (casillaDeJugador activo) tablero
+
+--coordenas3x3
+
+direccionesPosibles :: Int -> [Int]   
+direccionesPosibles casilla = derecha++izquierda++arriba++abajo
+   where
+      (x0,yo) = intA3x3 casilla
+      derecha = --todas las coordenas 3x3 con x=x0 y y > yo
+      izquierda = -- todas las coordenas 3x3 con x =x0 y < yo
+      arriba =
+      abajo = 
+
+
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
                                                          -- jugador activo, si el juego está terminado, o si la acción no es realizable. 
 next (ConstructorTakGame casillas WhitePlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (BlackPlayer)    
 next (ConstructorTakGame casillas BlackPlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (WhitePlayer)                                                
-next _ _ = error "next: no implementado" -- el estado resultante. Se debe levantar un error si el jugador dado no es el 
+next _ _ = error "next: no implementado"
 
-casillaVacia :: Casilla -> Bool
+
+
+casillaVacixa :: Casilla -> Bool
 casillaVacia (ConstructorCasilla [] ) = True
 casillaVacia _ = False
 
@@ -208,7 +236,7 @@ desapilarDeCasilla :: Casilla -> Int -> ([Ficha],Casilla)
 --devuelve las fichas desapiladas en una lista, y el nuevo estado de la casilla
 desapilarDeCasilla (ConstructorCasilla fichas) cuantas = (desapiladas,casillaNueva)
       where
-         desapiladas = drop cuantas fichas
+         desapiladas = drop ((length fichas) - cuantas) fichas
          nuevaPilaEnCasilla = take ((length fichas) - cuantas) fichas
          casillaNueva = (ConstructorCasilla nuevaPilaEnCasilla)
 
