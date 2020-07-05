@@ -68,6 +68,14 @@ actions g@(ConstructorTakGame tablero activo)
       
 actions _ = error "actions: error"
 
+calculadorHacias :: [Int] -> [Int]
+calculadorHacias desdes
+   where
+      desdesEnCoordenadas = intA3x3 desdes
+      haciasEnCoordenadas = map calcularHacias2 desdeEnCoordenadas
+      hacias = map tx3Aint haciasEnCoordenadas
+
+
 -- mover :: Tablero -> (TakPlayer, TakAction) -> Tablero
 -- (a -> Bool) -> [a] -> [Int]
 -- findIndices (>3) [0,2,4,6,8]
@@ -83,12 +91,21 @@ posicionesDeJugador (ConstructorTakGame tablero activo) = indicesPosiciones
 direccionesPosibles :: Int -> [Int]   
 direccionesPosibles casilla = derecha++izquierda++arriba++abajo
    where
-      (x0,yo) = intA3x3 casilla
-      derecha = --todas las coordenas 3x3 con x=x0 y y > yo
-      izquierda = -- todas las coordenas 3x3 con x =x0 y < yo
-      arriba =
-      abajo = 
+      (x0,y0) = intA3x3 casilla
+      derecha = --todas las coordenas 3x3 con x=x0 y y > y0
+      izquierda = -- todas las coordenas 3x3 con x =x0 y < y0
+      arriba = -- todas las coordenadas 3x3 con x < x0 y = y0
+      abajo = -- todas las coordenadas 3x3 con x > x0 y = y0
 
+-- posiblesDerecha :: (Int,Int) -> [(Int,Int)]
+-- posiblesDerecha (x0,y0) = filter (\x->)
+   
+-- filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
+-- filaOColumnaEnComun (x1,y1) (x2,y2)
+--    |x1==x2 = filter (\x-> (fst x == x1)) coordenadas3X3
+--    |y1==y2 = filter (\y-> (snd y == y1)) coordenadas3X3
+-- filaOColumnaEnComun _ _ = []
+      
 
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
                                                          -- jugador activo, si el juego está terminado, o si la acción no es realizable. 
