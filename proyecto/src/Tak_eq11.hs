@@ -10,7 +10,7 @@ Leonardo Val, Ignacio Pacheco.
 module Tak where
 
 import Data.Maybe
-import Data.List (elemIndex)
+import Data.List
 import System.Random --para que cargue bien usar stack ghci
 import Data.List.Split
 
@@ -35,7 +35,7 @@ data Ficha = Horizontal TakPlayer | Vertical TakPlayer deriving (Eq,Show)
 type Tablero = [Casilla]
 data TakPlayer = WhitePlayer | BlackPlayer deriving (Eq, Enum, Bounded)
 data TakGame = ConstructorTakGame Tablero TakPlayer deriving (Eq,Show)
-data TakAction = Colocar Int Ficha | Mover Int Int Ficha deriving (Eq, Show)
+data TakAction = Colocar Int Ficha | Mover Int Int [Int] deriving (Eq, Show)
 data Casilla = ConstructorCasilla [Ficha] deriving (Eq,Show)
 
 
@@ -61,9 +61,9 @@ actions (ConstructorTakGame tablero activo)
         where      
             fichaBlanca = Horizontal WhitePlayer
             fichaNegra = Horizontal BlackPlayer
-            posicionesVacias = [    x| x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
-actions _ = error "actions: error" 
-
+            posicionesVacias = [x| x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
+actions _ = error "actions: error"
+--falta que actions tire posible TakAction mover
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
                                                          -- jugador activo, si el juego está terminado, o si la acción no es realizable. 
 next (ConstructorTakGame casillas WhitePlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (BlackPlayer)    
@@ -174,10 +174,14 @@ readAction entrada
       [accion,ind1,ind2,orientacion,jugador] = splitOn "," entrada
       posicion = tx3Aint (read (ind1), read (ind2))
       juga = if jugador=="W" then WhitePlayer else if jugador=="B" then BlackPlayer else error "jugador no valido"
-      --ejemplo mover: M, ,0,1, 1,1 [0,1,0]
-      --ejemplo mover2: M 0,0 , 0,1 [1,1,1]
+      --ejemplo de que quiero mover 3 fichas en la posicion 0,0 hacia la 0,2
+      -- M, (0,0) , (0,2) , [1,2]
+      --ejemplo de que quiero mover 2 fichas en la posicion 0,0 hacia la 0,2
+      -- M, (0,0) , (0,2) , [1,1]
+      --ejemplo de que quiero mover 1 fichas en la posicion 0,0 hacia la 0,2
+      --M, (0,0) , (0,2) , [1,0]
       --coordenas de la ficha,
-      --direccion (coordenas de otra casilla)
+      --direccion (coordenas de la casilla mas lejana en esa direccion)
       --lista con cunatas quiere dejar en cada posicion
 readAction _ = error "accion no valida o no implementada"
    
@@ -200,22 +204,87 @@ activePlayer g@(ConstructorTakGame tablero _)
 --list or Just a where a is the first element
 --of the list
 
+desapilarDeCasilla :: Casilla -> Int -> ([Ficha],Casilla)
+--devuelve las fichas desapiladas en una lista, y el nuevo estado de la casilla
+desapilarDeCasilla (ConstructorCasilla fichas) cuantas = (desapiladas,casillaNueva)
+      where
+         desapiladas = drop cuantas fichas
+         nuevaPilaEnCasilla = take ((length fichas) - cuantas) fichas
+         casillaNueva = (ConstructorCasilla nuevaPilaEnCasilla)
+
+filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
+filaOColumnaEnComun (x1,y1) (x2,y2)
+   |x1==x2 = filter (\x-> (fst x == x1)) coordenadas3X3
+   |y1==y2 = filter (\y-> (snd y == y1)) coordenadas3X3
+filaOColumnaEnComun _ _ = []
+
+casillasEnDireccion :: Tablero -> Int -> Int -> Int -> ([Casilla],[Int])
+--le decis tablero, desde, hacia, cuantas
+--queremos que el take sea desde la posicon siguiente del desde hasta el final
+casillasEnDireccion tablero desde hacia cuantas = (casillasResultado,posicionesResultado)
+   where
+      desdeEnCoordenadas = intA3x3 desde
+      haciaEnCoordenadas = intA3x3 hacia
+      fOCEnComun = filaOColumnaEnComun desdeEnCoordenadas haciaEnCoordenadas
+      coordenadaDesde = fromMaybe (-1) (elemIndex desdeEnCoordenadas fOCEnComun)
+      coordenadasAPartir = subLista fOCEnComun (coordenadaDesde + 1) (length fOCEnComun)
+      coordenadasResultado = take cuantas coordenadasAPartir
+      posicionesResultado = map tx3Aint coordenadasResultado
+      casillasResultado = [tablero!!x | x<-posicionesResultado]
+
+setListaN :: (Eq a) => [a] -> [Int] -> [a] -> [a]
+--lista original, lista posiciones, lista de nuevos elementos -> nueva lista
+--(posicion,elemento)
+setListaN  lista [] [] = lista
+setListaN  lista (x:xs) (y:ys) = setListaN (setLista lista x y) xs ys
 
 
-apilarFicha :: Casilla -> Ficha -> Casilla
-apilarFicha (ConstructorCasilla fichas) fichaNueva = (ConstructorCasilla (fichaNueva:(fichas)))
+subLista :: (Eq a) => [a] -> Int -> Int -> [a]
+subLista lista desde hasta
+      |desde == hasta = [lista!!hasta]
+      |desde > hasta = error "indices invalidos"
+      |otherwise = take (hasta-desde+1) (drop (desde) lista)
+
+apilarFichasEnCasillas :: [Casilla] -> [Ficha] -> [Int] -> [Casilla]
+--casillas, fichas, cuantas apilo en cada casilla
+--colocarFichas :: Casilla -> [Ficha] -> Casilla
+apilarFichasEnCasillas [] [] [] = []
+apilarFichasEnCasillas (casilla1:restoCasillas) fichas (cuantas1:restoCuantas) = [nuevaCasilla1]++(apilarFichasEnCasillas restoCasillas fichasRestantes restoCuantas)
+   where
+      fichasAColocarEnCasilla1 = take cuantas1 fichas
+      fichasRestantes = drop cuantas1 fichas
+      nuevaCasilla1 = (colocarFichas casilla1 fichasAColocarEnCasilla1)
+
+mover :: Tablero -> (TakPlayer, TakAction) -> Tablero
+mover tablero (jugador,(Mover desde hacia lista)) = nuevoEstadoTablero
+   where
+      casillaOrigen=tablero!!desde
+      cuantasVaAMover = foldr1 (+) lista
+      (desapiladasOrigen,nuevoEstadoCasillaOrigen) = desapilarDeCasilla casillaOrigen cuantasVaAMover
+      cuantoMeMuevo = length (filter (\x->(x /= 0)) lista)
+      (lasOtrasCasillas,posicionesOtrasCasillas) = casillasEnDireccion tablero desde hacia cuantoMeMuevo
+      nuevoEstadoDeLasOtrasCasillas = apilarFichasEnCasillas lasOtrasCasillas desapiladasOrigen lista
+      nuevoEstadoTablero = setListaN tablero (desde:posicionesOtrasCasillas) (nuevoEstadoCasillaOrigen:nuevoEstadoDeLasOtrasCasillas)
+      
+      --de la casilla origen tengo que desapilar las primeras (cuantasquieremover - cuantas quiere dejar en el origen) fichas
+      -- (0,0) (0,2) [1,1] --en este caso hay que desapilar 2 fichas del origen
+      -- (0,0) (0,2) [1,0]
+      -- cuntas quiere dejar en segunda posicion es cuantasQuiereMover - cuantas quiera dejar en las otras posiciones
+
+colocarFichas :: Casilla -> [Ficha] -> Casilla
+colocarFichas (ConstructorCasilla fichas) fichasNuevas = (ConstructorCasilla (fichas++fichasNuevas))
 
 colocar :: Tablero -> (TakPlayer, TakAction) -> Tablero
 colocar tablero (WhitePlayer, (Colocar posicion fichaBlanca)) = nuevoTablero
       where
             nuevoTablero = setLista tablero (posicion) nuevaCasilla
             laCasilla = tablero!!posicion
-            nuevaCasilla = apilarFicha laCasilla (Horizontal WhitePlayer)
+            nuevaCasilla = colocarFichas laCasilla [fichaBlanca]
 colocar tablero (BlackPlayer, (Colocar posicion fichaNegra)) = nuevoTablero
       where
             nuevoTablero = setLista tablero (posicion) nuevaCasilla
             laCasilla = tablero!!posicion
-            nuevaCasilla = apilarFicha laCasilla (Horizontal BlackPlayer)
+            nuevaCasilla = colocarFichas laCasilla [fichaNegra]
 colocar _ _ = error "no implementado"
 
 tableroLleno :: Tablero -> Bool
