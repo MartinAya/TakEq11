@@ -11,8 +11,8 @@ module Tak where
 
 import Data.Maybe
 import Data.List
-import System.Random --para que cargue bien usar stack ghci
-import Data.List.Split
+-- import System.Random --para que cargue bien usar stack ghci
+-- import Data.List.Split
 
 {- Es posible que el paquete `System.Random` no esté disponible si se instaló el core de la Haskell 
 Platform en el sistema. Para instalarlo, ejecutar los siguientes comandos:
@@ -52,18 +52,24 @@ beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..16]] WhiteP
 
 actions :: TakGame -> [(TakPlayer, [TakAction])]
 actions g@(ConstructorTakGame tablero activo)
-   |activo == WhitePlayer = [(BlackPlayer,[]),(WhitePlayer,posiblesColocar++posiblesMover2)]
-   |activo == BlackPlayer  = [(WhitePlayer,[]),(BlackPlayer,posiblesColocar++posiblesMover2)]
+   |activo == WhitePlayer = [(BlackPlayer,[]),(WhitePlayer,posiblesColocarH++posiblesColocarV++posiblesMover2)]
+   |activo == BlackPlayer  = [(WhitePlayer,[]),(BlackPlayer,posiblesColocarH++posiblesColocarV++posiblesMover2)]
    --mover :: Tablero -> (TakPlayer, TakAction) -> Tablero   TakAction Mover Int Int [Int]   
    --colocar :: Tablero -> (TakPlayer, TakAction) -> Tablero TakAction Colocar Int Ficha
       where
-         posiblesColocar = [Colocar cas (Horizontal activo) | cas <- posicionesVacias ] 
+         posiblesColocarH = [Colocar cas (Horizontal activo) | cas <- posicionesVacias ] 
+         posiblesColocarV = [Colocar cas (Vertical activo) | cas <- posicionesVacias ] 
          posicionesVacias = [ x | x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
          listaDesdes = posicionesDeJugador g
          desdesYHastas = foldr (++) [] (map calculadorHacia listaDesdes)
          posiblesMover1 = [ (posiblesMoverEnTupla desde hasta tablero) | (desde,hasta) <- desdesYHastas]
          posiblesMover2 = foldr (++) [] posiblesMover1
 actions _ = error "actions: error"
+
+orientacionFicha:: Ficha -> String
+orientacionFicha (Horizontal _) = "H"
+orientacionFicha (Vertical _)= "V"
+
 
 posiblesMoverEnTupla :: Int -> Int -> Tablero -> [TakAction]
 posiblesMoverEnTupla desde hacia tablero = posiblesMover
@@ -267,11 +273,20 @@ showAction (Mover desde direccion apilamiento) = "M " ++ show (intA3x3 desde) ++
 readAction :: String -> TakAction
 readAction entrada
    |accion =="C" && orientacion=="H" =  Colocar posicion (Horizontal juga)
+   |accion =="C" && orientacion=="V" =  Colocar posicion (Vertical juga)
+   --  Mover Int Int [Int]
+   |accion =="M" = Mover desde hacia [lista]
    where
       --caso colocar: C,0,1,H,W
-      [accion,ind1,ind2,orientacion,jugador] = splitOn "," entrada
+      [accion,ind1,ind2,orientacion,jugador,lista] = splitOn "," entrada
+      
       posicion = tx3Aint (read (ind1), read (ind2))
+
+      desde = read (ind1)
+      hacia = read (ind2)
+
       juga = if jugador=="W" then WhitePlayer else if jugador=="B" then BlackPlayer else error "jugador no valido"
+      
       --ejemplo de que quiero mover 3 fichas en la posicion 0,0 hacia la 0,2
       -- M, (0,0) , (0,2) , [1,2]
       --ejemplo de que quiero mover 2 fichas en la posicion 0,0 hacia la 0,2
