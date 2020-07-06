@@ -29,3 +29,11 @@ prueba desapilarDeCasilla
 fichas = [Horizontal WhitePlayer, Horizontal BlackPlayer, Horizontal WhitePlayer]
 casilla = ConstructorCasilla fichas
 desapilarDeCasilla casilla 2
+
+prueba casillasEnDireccion
+
+t1 = getTablero beginning3x3
+
+casillasEnDireccion t1 0 1 2
+
+--

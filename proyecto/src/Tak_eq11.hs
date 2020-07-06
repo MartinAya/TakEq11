@@ -51,61 +51,115 @@ beginning4x4 :: TakGame -- El estado inicial del juego Tak con un tablero de 4x4
 beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..16]] WhitePlayer
 
 actions :: TakGame -> [(TakPlayer, [TakAction])]
-actions g@(ConstructorTakGame tablero activo)                                    
-      -- COLOCAR
-      |activo==WhitePlayer = [(BlackPlayer,[]) , (WhitePlayer, [Colocar cas fichaBlanca | cas <- posicionesVacias ]  ) ]
-      |activo== BlackPlayer = [(BlackPlayer, [Colocar cas fichaNegra | cas <- posicionesVacias]  ) , (WhitePlayer,[]) ]
-
-      -- Mover     mover :: Tablero -> (TakPlayer, TakAction) -> Tablero   TakAction Mover Int Int [Int]   
-      |activo==WhitePlayer = [(BlackPlayer,[]) , (WhitePlayer, [Mover cas fichaBlanca | cas <- posicionesVacias ]  ) ]
-      |activo== BlackPlayer = [(BlackPlayer, [Mover cas fichaNegra | cas <- posicionesVacias]  ) , (WhitePlayer,[]) ]
-        
-        where      
-            fichaBlanca = Horizontal WhitePlayer
-            fichaNegra = Horizontal BlackPlayer
-            posicionesVacias = [ x | x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
-            listaDeDesdes = posicionesDeJugador g
-      
+actions g@(ConstructorTakGame tablero activo)
+   |activo == WhitePlayer = [(BlackPlayer,[]),(WhitePlayer,posiblesColocar++posiblesMover2)]
+   |activo == BlackPlayer  = [(WhitePlayer,[]),(BlackPlayer,posiblesColocar++posiblesMover2)]
+   --mover :: Tablero -> (TakPlayer, TakAction) -> Tablero   TakAction Mover Int Int [Int]   
+   --colocar :: Tablero -> (TakPlayer, TakAction) -> Tablero TakAction Colocar Int Ficha
+      where
+         posiblesColocar = [Colocar cas (Horizontal activo) | cas <- posicionesVacias ] 
+         posicionesVacias = [ x | x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
+         listaDesdes = posicionesDeJugador g
+         desdesYHastas = foldr (++) [] (map calculadorHacia listaDesdes)
+         posiblesMover1 = [ (posiblesMoverEnTupla desde hasta tablero) | (desde,hasta) <- desdesYHastas]
+         posiblesMover2 = foldr (++) [] posiblesMover1
 actions _ = error "actions: error"
 
-calculadorHacias :: [Int] -> [Int]
-calculadorHacias desdes
+posiblesMoverEnTupla :: Int -> Int -> Tablero -> [TakAction]
+posiblesMoverEnTupla desde hacia tablero = posiblesMover
+   where 
+      hastaCuantasFichas = take fichasActuales (cuantasFichasPuedeMover tablero)
+      (ConstructorCasilla fichas) = (tablero!!desde)
+      fichasActuales = length fichas
+      --posiblesApilamientos :: Int -> Int -> Int -> [[Int]]
+      apilamientos = foldr1 (++) [ posiblesApilamientos cuantas desde hacia | cuantas <- hastaCuantasFichas ]
+      posiblesMover = [ Mover desde hacia a | a <- apilamientos]
+
+--Eliminia dupliados
+distintos:: [Int] -> [Int]
+distintos [] = []
+distintos[a] = [a]
+distintos (x:xs)
+   |elem x xs = distintos xs
+   |otherwise = [x] ++ distintos xs
+
+cuantasFichasPuedeMover :: Tablero -> [Int]
+cuantasFichasPuedeMover tablero
+   |length tablero == 9 = [1,2,3]
+   |length tablero == 16 = [1,2,3,4]
+
+distancia :: (Int,Int) -> (Int,Int) -> Int
+--solo devuelve distancia para casillas en misma fila o columna
+distancia (x1,y1) (x2,y2)
+   |x1==x2 = y2 - y1
+   |y1==y2 = x2 - x1
+
+posiblesApilamientos :: Int -> Int -> Int -> [[Int]]
+-- cuantas, desde, hasta
+posiblesApilamientos cuantas desde hasta = apilamientosValidos
    where
-      desdesEnCoordenadas = intA3x3 desdes
-      haciasEnCoordenadas = map calcularHacias2 desdeEnCoordenadas
-      hacias = map tx3Aint haciasEnCoordenadas
+      -- (0,0) (0,1) = 1 - 0 (0,0) (0,2) = 2 - 0 
+      -- filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
+      espacioEntreDesdeYHasta = distancia (intA3x3 desde) (intA3x3 hasta)
+      todosPosiblesApilamientos = choose espacioEntreDesdeYHasta [0..cuantas]
+      apilamientosValidos = filter (filtrado cuantas) todosPosiblesApilamientos
+      
+filtrado :: Int -> [Int] -> Bool
+filtrado cuantas lista = (sinCerosALaIzquierda lista) && (foldr1 (+) lista == cuantas)
+--1 - la suma tiene que ser cuantas
+--2 - no puede haber un cero a la izquierda 
+
+sinCerosALaIzquierda :: [Int] -> Bool
+sinCerosALaIzquierda [x] = True
+sinCerosALaIzquierda (x:y:xs)
+   |x==0 && y/=0 = False
+   |True = sinCerosALaIzquierda (y:xs)
 
 
--- mover :: Tablero -> (TakPlayer, TakAction) -> Tablero
--- (a -> Bool) -> [a] -> [Int]
--- findIndices (>3) [0,2,4,6,8]
--- [2,3,4]
--- casillaDeJugador :: TakPlayer -> Casilla -> Bool
+--https://stackoverflow.com/questions/35118659/haskell-permutations-with-the-length-of-the-output-list
+choose n list = concatMap permutations $ choose' list [] where
+  choose' []     r = if length r == n then [r] else []
+  choose' (x:xs) r | length r == n = [r]
+                   | otherwise     = choose' xs (x:r) 
+                                  ++ choose' xs r
+
+calculadorHacia :: Int -> [(Int,Int)]
+--tiene que tirar tuplas con desde y cada posible hacia
+calculadorHacia desde = resultado
+   where
+      hacias = direccionesPosibles desde
+      resultado = [(desde,x) | x <- hacias]
+   
 posicionesDeJugador :: TakGame -> [Int]
 posicionesDeJugador (ConstructorTakGame tablero activo) = indicesPosiciones
       where
          indicesPosiciones = findIndices (casillaDeJugador activo) tablero
 
---coordenas3x3
+masLejano :: Int -> [Int] -> Int
+masLejano origen posibles = elMasLejano
+   where
+      origen3x3 = intA3x3 origen
+      posibles3x3 = map intA3x3 posibles
+      distancias = map (distancia origen3x3) posibles3x3
+      mayorDistancia = maximum distancias
+      posicionDelMayor = fromMaybe 0 (elemIndex mayorDistancia distancias)
+      elMasLejano = posibles!!posicionDelMayor
 
 direccionesPosibles :: Int -> [Int]   
-direccionesPosibles casilla = derecha++izquierda++arriba++abajo
+direccionesPosibles casilla = derecha2++izquierda2++arriba2++abajo2
    where
       (x0,y0) = intA3x3 casilla
-      derecha = --todas las coordenas 3x3 con x=x0 y y > y0
-      izquierda = -- todas las coordenas 3x3 con x =x0 y < y0
-      arriba = -- todas las coordenadas 3x3 con x < x0 y = y0
-      abajo = -- todas las coordenadas 3x3 con x > x0 y = y0
+      derecha =  map tx3Aint (filter (\(x,y) -> x == x0 && y > y0) coordenadas3X3)
+      izquierda =  map tx3Aint (filter (\(x,y) -> x == x0 && y < y0) coordenadas3X3)
+      arriba =  map tx3Aint (filter (\(x,y) -> x < x0 && y == y0) coordenadas3X3)
+      abajo = map tx3Aint (filter (\(x,y) -> x > x0 && y == y0) coordenadas3X3)
+      derecha2 = if derecha /= [] then [(masLejano casilla derecha)] else []
+      izquierda2 = if izquierda /= [] then [(masLejano casilla izquierda)] else []
+      arriba2 = if arriba /= [] then [(masLejano casilla arriba)] else []
+      abajo2 = if abajo /= [] then [(masLejano casilla abajo)] else []
+      --en cada guarda que se quede con el que esta mas lejos
+      --distancia (intA3x3 desde) (intA3x3 hasta)
 
--- posiblesDerecha :: (Int,Int) -> [(Int,Int)]
--- posiblesDerecha (x0,y0) = filter (\x->)
-   
--- filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
--- filaOColumnaEnComun (x1,y1) (x2,y2)
---    |x1==x2 = filter (\x-> (fst x == x1)) coordenadas3X3
---    |y1==y2 = filter (\y-> (snd y == y1)) coordenadas3X3
--- filaOColumnaEnComun _ _ = []
-      
 
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
                                                          -- jugador activo, si el juego está terminado, o si la acción no es realizable. 
@@ -115,7 +169,7 @@ next _ _ = error "next: no implementado"
 
 
 
-casillaVacixa :: Casilla -> Bool
+casillaVacia :: Casilla -> Bool
 casillaVacia (ConstructorCasilla [] ) = True
 casillaVacia _ = False
 
@@ -208,8 +262,7 @@ tx3Aint tupla = if (resultado==Nothing)
       
 showAction :: TakAction -> String
 showAction (Colocar int ficha) = "C " ++ show (intA3x3 int) ++" "++ showFicha (ficha)
-   
-
+showAction (Mover desde direccion apilamiento) = "M " ++ show (intA3x3 desde) ++" "++ show (intA3x3 direccion) ++ (show apilamiento)
 
 readAction :: String -> TakAction
 readAction entrada
@@ -459,6 +512,7 @@ consoleAgent player state = do
       return Nothing
    else do
       putStrLn ("Select one move:" ++ concat ["\n"++ showAction m | m <- moves])--se cambio show por showAction
+      putStrLn (show (length moves))
       line <- getLine
       let input = readAction line
       if elem input moves then return (Just input) else do 
