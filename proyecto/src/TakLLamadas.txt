@@ -6,11 +6,11 @@ prueba mover
 --colocar :: Tablero -> (TakPlayer, TakAction) -> Tablero
 
 colocar1 = Colocar 0 (Horizontal WhitePlayer)
-colocar2 = Colocar 0 (Horizontal WhitePlayer)
+colocar2 = Colocar 1 (Horizontal BlackPlayer)
 mover1 = Mover 0 2 [1,1]
 
 t1 = colocar (getTablero beginning3x3) (WhitePlayer,colocar1)
-t2 = colocar t1 (WhitePlayer,colocar2)
+t2 = colocar t1 (BlackPlayer,colocar2)
 t3 = mover t2 (WhitePlayer,mover1)
 
 prueba apilarFichasEnCasillas

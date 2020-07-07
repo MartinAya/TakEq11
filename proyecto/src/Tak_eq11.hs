@@ -11,8 +11,10 @@ module Tak where
 
 import Data.Maybe
 import Data.List
--- import System.Random --para que cargue bien usar stack ghci
--- import Data.List.Split
+import Data.Char
+import System.Random --para que cargue bien usar stack ghci
+import Data.List.Split
+
 
 {- Es posible que el paquete `System.Random` no esté disponible si se instaló el core de la Haskell 
 Platform en el sistema. Para instalarlo, ejecutar los siguientes comandos:
@@ -169,9 +171,13 @@ direccionesPosibles casilla = derecha2++izquierda2++arriba2++abajo2
 
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
                                                          -- jugador activo, si el juego está terminado, o si la acción no es realizable. 
-next (ConstructorTakGame casillas WhitePlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (BlackPlayer)    
-next (ConstructorTakGame casillas BlackPlayer) (jugador, (Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, (Colocar cas ficha) ) ) (WhitePlayer)                                                
-next _ _ = error "next: no implementado"
+--colocar :: Tablero -> (TakPlayer, TakAction) -> Tablero
+next (ConstructorTakGame casillas WhitePlayer) (jugador, c@(Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, c ) ) (BlackPlayer)    
+next (ConstructorTakGame casillas BlackPlayer) (jugador, c@(Colocar cas ficha) ) = ConstructorTakGame (colocar casillas (jugador, c ) ) (WhitePlayer)                                                
+--mover :: Tablero -> (TakPlayer, TakAction) -> Tablero
+next (ConstructorTakGame casillas WhitePlayer) (jugador, m@(Mover desde hasta apila) ) = ConstructorTakGame (mover casillas (jugador, m ) ) (BlackPlayer)    
+next (ConstructorTakGame casillas BlackPlayer) (jugador, m@(Mover desde hasta apila) ) = ConstructorTakGame (mover casillas (jugador, m ) ) (WhitePlayer)
+
 
 
 
@@ -270,42 +276,27 @@ showAction :: TakAction -> String
 showAction (Colocar int ficha) = "C " ++ show (intA3x3 int) ++" "++ showFicha (ficha)
 showAction (Mover desde direccion apilamiento) = "M " ++ show (intA3x3 desde) ++" "++ show (intA3x3 direccion) ++ (show apilamiento)
 
-readAction :: String -> TakAction
-readAction entrada
-   |accion =="C" && orientacion=="H" =  Colocar posicion (Horizontal juga)
-   |accion =="C" && orientacion=="V" =  Colocar posicion (Vertical juga)
-   --  Mover Int Int [Int]
-   |accion =="M" = Mover desde hacia [lista]
+readCoord :: [String] -> Int
+readCoord [x0,y0] = elInt
    where
-      --caso colocar: C,0,1,H,W
-      [accion,ind1,ind2,orientacion,jugador,lista] = splitOn "," entrada
-      
-      posicion = tx3Aint (read (ind1), read (ind2))
+      elInt = tx3Aint(intx0,inty0)
+      intx0 = read x0
+      inty0 = read y0
+readCoord _ = error "error readCoord"
 
-      desde = read (ind1)
-      hacia = read (ind2)
+readAction2 :: [String] -> TakAction
+--data TakAction = Colocar Int Ficha | Mover Int Int [Int] deriving (Eq, Show
+--data Ficha = Horizontal TakPlayer | Vertical TakPlayer deriving (Eq,Show)
+readAction2 ["C",x0,y0,"H","W"] = Colocar (readCoord [x0,y0]) (Horizontal WhitePlayer)
+readAction2 ["C",x0,y0,"H","B"] = Colocar (readCoord [x0,y0]) (Horizontal BlackPlayer)
+readAction2 ["C",x0,y0,"V","W"] = Colocar (readCoord [x0,y0]) (Vertical WhitePlayer)
+readAction2 ["C",x0,y0,"V","B"] = Colocar (readCoord [x0,y0]) (Vertical BlackPlayer)
+readAction2 ["M",x0,y0,x1,y1,lista] = Mover (readCoord [x0,y0]) (readCoord [x1,y1]) (map digitToInt lista)
 
-      juga = if jugador=="W" then WhitePlayer else if jugador=="B" then BlackPlayer else error "jugador no valido"
-      
-      --ejemplo de que quiero mover 3 fichas en la posicion 0,0 hacia la 0,2
-      -- M, (0,0) , (0,2) , [1,2]
-      --ejemplo de que quiero mover 2 fichas en la posicion 0,0 hacia la 0,2
-      -- M, (0,0) , (0,2) , [1,1]
-      --ejemplo de que quiero mover 1 fichas en la posicion 0,0 hacia la 0,2
-      --M, (0,0) , (0,2) , [1,0]
-      --coordenas de la ficha,
-      --direccion (coordenas de la casilla mas lejana en esa direccion)
-      --lista con cunatas quiere dejar en cada posicion
-readAction _ = error "accion no valida o no implementada"
+readAction :: String -> TakAction
+readAction entrada = readAction2 (splitOn "," entrada)
+
    
-
--- activePlayer :: TakGame -> Maybe TakPlayer
--- activePlayer g = listToMaybe [p | (p, as) <- actions g, not (null as)]
-
--- activePlayer :: TakGame -> TakPlayer -- Esta función determina a cuál jugador le toca mover, dado un estado de juego.
--- activePlayer (ConstructorTakGame _ WhitePlayer) = WhitePlayer
--- activePlayer (ConstructorTakGame _ BlackPlayer) = BlackPlayer
-
 activePlayer :: TakGame -> Maybe TakPlayer
 --activePlayer tiene que verificar si alguien completo un camino, y si es así, devolver Nothing
 activePlayer g@(ConstructorTakGame tablero _)
@@ -361,7 +352,9 @@ subLista lista desde hasta
 apilarFichasEnCasillas :: [Casilla] -> [Ficha] -> [Int] -> [Casilla]
 --casillas, fichas, cuantas apilo en cada casilla
 --colocarFichas :: Casilla -> [Ficha] -> Casilla
-apilarFichasEnCasillas [] [] [] = []
+apilarFichasEnCasillas _ _ [] = []
+apilarFichasEnCasillas _ [] _ = []
+apilarFichasEnCasillas [] _ _ = []
 apilarFichasEnCasillas (casilla1:restoCasillas) fichas (cuantas1:restoCuantas) = [nuevaCasilla1]++(apilarFichasEnCasillas restoCasillas fichasRestantes restoCuantas)
    where
       fichasAColocarEnCasilla1 = take cuantas1 fichas
@@ -527,7 +520,7 @@ consoleAgent player state = do
       return Nothing
    else do
       putStrLn ("Select one move:" ++ concat ["\n"++ showAction m | m <- moves])--se cambio show por showAction
-      putStrLn (show (length moves))
+      putStrLn (show (length moves) ++ "movimientos")
       line <- getLine
       let input = readAction line
       if elem input moves then return (Just input) else do 
