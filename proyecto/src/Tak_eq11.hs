@@ -63,7 +63,7 @@ actions g@(ConstructorTakGame tablero activo)
          posiblesColocarV = [Colocar cas (Vertical activo) | cas <- posicionesVacias ] 
          posicionesVacias = [ x | x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
          listaDesdes = posicionesDeJugador g
-         desdesYHastas = foldr (++) [] (map calculadorHacia listaDesdes)
+         desdesYHastas = foldr (++) [] (map (calculadorHacia g) listaDesdes)
          posiblesMover1 = [ (posiblesMoverEnTupla desde hasta tablero) | (desde,hasta) <- desdesYHastas]
          posiblesMover2 = foldr (++) [] posiblesMover1
 actions _ = error "actions: error"
@@ -98,9 +98,10 @@ cuantasFichasPuedeMover tablero
 
 distancia :: (Int,Int) -> (Int,Int) -> Int
 --solo devuelve distancia para casillas en misma fila o columna
-distancia (x1,y1) (x2,y2)
-   |x1==x2 = y2 - y1
-   |y1==y2 = x2 - x1
+distancia (x1,y1) (x2,y2) 
+   |x1==x2 = abs (y2 - y1)
+   |y1==y2 = abs (x2 - x1)
+   |otherwise = error "No hay filas ni columnas en comun"
 
 posiblesApilamientos :: Int -> Int -> Int -> [[Int]]
 -- cuantas, desde, hasta
@@ -131,13 +132,13 @@ choose n list = concatMap permutations $ choose' list [] where
                    | otherwise     = choose' xs (x:r) 
                                   ++ choose' xs r
 
-calculadorHacia :: Int -> [(Int,Int)]
+calculadorHacia :: TakGame -> Int -> [(Int,Int)]
 --tiene que tirar tuplas con desde y cada posible hacia
-calculadorHacia desde = resultado
+calculadorHacia g desde = resultado
    where
-      hacias = direccionesPosibles desde
+      hacias = direccionesPosibles g desde
       resultado = [(desde,x) | x <- hacias]
-   
+
 posicionesDeJugador :: TakGame -> [Int]
 posicionesDeJugador (ConstructorTakGame tablero activo) = indicesPosiciones
       where
@@ -153,20 +154,42 @@ masLejano origen posibles = elMasLejano
       posicionDelMayor = fromMaybe 0 (elemIndex mayorDistancia distancias)
       elMasLejano = posibles!!posicionDelMayor
 
-direccionesPosibles :: Int -> [Int]   
-direccionesPosibles casilla = derecha2++izquierda2++arriba2++abajo2
+direccionesPosibles :: TakGame -> Int -> [Int]   
+direccionesPosibles g casilla = derecha2++izquierda2++arriba2++abajo2
    where
       (x0,y0) = intA3x3 casilla
-      derecha =  map tx3Aint (filter (\(x,y) -> x == x0 && y > y0) coordenadas3X3)
+      derecha =  map tx3Aint (filter (\(x,y) -> x == x0 && y > y0) coordenadas3X3) 
       izquierda =  map tx3Aint (filter (\(x,y) -> x == x0 && y < y0) coordenadas3X3)
-      arriba =  map tx3Aint (filter (\(x,y) -> x < x0 && y == y0) coordenadas3X3)
-      abajo = map tx3Aint (filter (\(x,y) -> x > x0 && y == y0) coordenadas3X3)
+      arriba =  map tx3Aint (filter (\(x,y) -> x > x0 && y == y0) coordenadas3X3)
+      abajo = map tx3Aint (filter (\(x,y) -> x < x0 && y == y0) coordenadas3X3)
+
+      -- casillasDerecha = map (casillaAPartirDePosicion g) derecha
+      -- intCasillaDerecha = map (intAPartirDeCasilla g) (filter casillasSinVerticalArriba casillasDerecha) 
+      -- casillasIzquierda = map (casillaAPartirDePosicion g) izquierda
+      -- intCasillaIzquierda = map (intAPartirDeCasilla g) (filter casillasSinVerticalArriba casillasIzquierda) 
+      -- casillasArriba = map (casillaAPartirDePosicion g) arriba
+      -- intCasillaArriba = map (intAPartirDeCasilla g) (filter casillasSinVerticalArriba casillasArriba) 
+      -- casillasAbajo = map (casillaAPartirDePosicion g) abajo
+      -- intCasillaAbajo = map (intAPartirDeCasilla g) (filter casillasSinVerticalArriba casillasAbajo) 
+
       derecha2 = if derecha /= [] then [(masLejano casilla derecha)] else []
       izquierda2 = if izquierda /= [] then [(masLejano casilla izquierda)] else []
       arriba2 = if arriba /= [] then [(masLejano casilla arriba)] else []
       abajo2 = if abajo /= [] then [(masLejano casilla abajo)] else []
       --en cada guarda que se quede con el que esta mas lejos
       --distancia (intA3x3 desde) (intA3x3 hasta)
+
+casillasSinVerticalArriba :: Casilla -> Bool
+casillasSinVerticalArriba casilla = "V" /= orientacion
+   where
+      ficha = fromMaybe (Horizontal WhitePlayer) (fichaDeArriba casilla)
+      orientacion = orientacionFicha ficha
+
+casillaAPartirDePosicion :: TakGame -> Int -> Casilla
+casillaAPartirDePosicion (ConstructorTakGame tablero jugador) posicion = tablero!!posicion
+
+intAPartirDeCasilla :: TakGame -> Casilla -> Int
+intAPartirDeCasilla (ConstructorTakGame tablero jugador) casilla = fromMaybe 0 (elemIndex casilla tablero)
 
 
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
@@ -188,11 +211,6 @@ casillaVacia _ = False
 getTablero :: TakGame -> Tablero
 getTablero (ConstructorTakGame tablero _) = tablero
     
-setLista :: (Eq a) => [a] -> Int -> a -> [a]
-setLista lista posicion ele
-   |posicion < 0 || posicion > (length lista - 1)= error "indice invalido"
-   |True = [if x==posicion then ele else lista!!x | x <- [0..(length lista-1)] ]
-
 -- El score se calcula como la cantidad de fichas no jugadas por cada jugador.
 
 nFichasXJugador :: Tablero -> Int
@@ -318,33 +336,40 @@ desapilarDeCasilla (ConstructorCasilla fichas) cuantas = (desapiladas,casillaNue
 
 filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
 filaOColumnaEnComun (x1,y1) (x2,y2)
-   |x1==x2 = filter (\x-> (fst x == x1)) coordenadas3X3
-   |y1==y2 = filter (\y-> (snd y == y1)) coordenadas3X3
+   |x1==x2 && y1<y2 = filter (\x-> (fst x == x1) && (snd x <= y2) && (snd x > y1 ) ) coordenadas3X3  --de izquierda a derecha
+   |x1==x2 && y1>y2 = reverse (filter (\x-> (fst x == x1) && (snd x >= y2) && (snd x < y1)) coordenadas3X3)  --de derecha a izquierda
+
+   |y1==y2 && x1>x2 = reverse (filter (\y-> (snd y == y1) && (fst y >= x2) && (fst y < x1)) coordenadas3X3)  --de arriba para abajo   -- invertir esta lista
+   |y1==y2 && x1<x2 = filter (\y-> (snd y == y1) && (fst y <= x2) && (fst y > x1)) coordenadas3X3  --de abajo para arriba
 filaOColumnaEnComun _ _ = []
 
 casillasEnDireccion :: Tablero -> Int -> Int -> Int -> ([Casilla],[Int])
 --le decis tablero, desde, hacia, cuantas
---queremos que el take sea desde la posicon siguiente del desde hasta el final
 casillasEnDireccion tablero desde hacia cuantas = (casillasResultado,posicionesResultado)
    where
       desdeEnCoordenadas = intA3x3 desde
       haciaEnCoordenadas = intA3x3 hacia
       fOCEnComun = filaOColumnaEnComun desdeEnCoordenadas haciaEnCoordenadas
-      coordenadaDesde = fromMaybe (-1) (elemIndex desdeEnCoordenadas fOCEnComun)
-      coordenadasAPartir = subLista fOCEnComun (coordenadaDesde + 1) (length fOCEnComun)
-      coordenadasResultado = take cuantas coordenadasAPartir
-      posicionesResultado = map tx3Aint coordenadasResultado
+      posicionesResultado = take cuantas (map tx3Aint fOCEnComun)
       casillasResultado = [tablero!!x | x<-posicionesResultado]
+
+setLista :: (Eq a) => [a] -> Int -> a -> [a]
+setLista lista posicion ele
+   |posicion < 0 || posicion > (length lista - 1)= error "indice invalido"
+   |True = [if x==posicion then ele else lista!!x | x <- [0..(length lista-1)] ]
 
 setListaN :: (Eq a) => [a] -> [Int] -> [a] -> [a]
 --lista original, lista posiciones, lista de nuevos elementos -> nueva lista
 --(posicion,elemento)
-setListaN  lista [] [] = lista
+setListaN  [] _ _ = []
+setListaN  lista [] _ = lista
+setListaN  lista _ [] = lista
 setListaN  lista (x:xs) (y:ys) = setListaN (setLista lista x y) xs ys
 
 
 subLista :: (Eq a) => [a] -> Int -> Int -> [a]
 subLista lista desde hasta
+      |hasta > length lista = error "sobrepasa la lista"
       |desde == hasta = [lista!!hasta]
       |desde > hasta = error "indices invalidos"
       |otherwise = take (hasta-desde+1) (drop (desde) lista)
@@ -371,7 +396,6 @@ mover tablero (jugador,(Mover desde hacia lista)) = nuevoEstadoTablero
       (lasOtrasCasillas,posicionesOtrasCasillas) = casillasEnDireccion tablero desde hacia cuantoMeMuevo
       nuevoEstadoDeLasOtrasCasillas = apilarFichasEnCasillas lasOtrasCasillas desapiladasOrigen lista
       nuevoEstadoTablero = setListaN tablero (desde:posicionesOtrasCasillas) (nuevoEstadoCasillaOrigen:nuevoEstadoDeLasOtrasCasillas)
-      
       --de la casilla origen tengo que desapilar las primeras (cuantasquieremover - cuantas quiere dejar en el origen) fichas
       -- (0,0) (0,2) [1,1] --en este caso hay que desapilar 2 fichas del origen
       -- (0,0) (0,2) [1,0]
