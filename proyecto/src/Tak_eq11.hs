@@ -38,7 +38,7 @@ data Ficha = Horizontal TakPlayer | Vertical TakPlayer deriving (Eq,Show)
 type Tablero = [Casilla]
 data TakPlayer = WhitePlayer | BlackPlayer deriving (Eq, Enum, Bounded)
 data TakGame = ConstructorTakGame Tablero TakPlayer deriving (Eq,Show)
-data TakAction = Colocar Int Ficha | Mover Int Int [Int] deriving (Eq, Show)
+data TakAction = Colocar Int Ficha | Mover Int Int [Int] | Invalido deriving (Eq, Show)
 data Casilla = ConstructorCasilla [Ficha] deriving (Eq,Show)
 
 
@@ -191,6 +191,9 @@ next (ConstructorTakGame casillas BlackPlayer) (jugador, c@(Colocar cas ficha) )
 --mover :: Tablero -> (TakPlayer, TakAction) -> Tablero
 next (ConstructorTakGame casillas WhitePlayer) (jugador, m@(Mover desde hasta apila) ) = ConstructorTakGame (mover casillas (jugador, m ) ) (BlackPlayer)    
 next (ConstructorTakGame casillas BlackPlayer) (jugador, m@(Mover desde hasta apila) ) = ConstructorTakGame (mover casillas (jugador, m ) ) (WhitePlayer)
+--invalido
+next (ConstructorTakGame casillas WhitePlayer) (jugador, invalido) = ConstructorTakGame (casillas) (WhitePlayer)
+next (ConstructorTakGame casillas BlackPlayer) (jugador, invalido) = ConstructorTakGame (casillas) (BlackPlayer)
 
 casillaVacia :: Casilla -> Bool
 casillaVacia (ConstructorCasilla [] ) = True
@@ -298,6 +301,7 @@ readAction2 ["C",x0,y0,"H","B"] = Colocar (readCoord [x0,y0]) (Horizontal BlackP
 readAction2 ["C",x0,y0,"V","W"] = Colocar (readCoord [x0,y0]) (Vertical WhitePlayer)
 readAction2 ["C",x0,y0,"V","B"] = Colocar (readCoord [x0,y0]) (Vertical BlackPlayer)
 readAction2 ["M",x0,y0,x1,y1,lista] = Mover (readCoord [x0,y0]) (readCoord [x1,y1]) (map digitToInt lista)
+readAction2 _ = Invalido 
 
 readAction :: String -> TakAction
 readAction entrada = readAction2 (splitOn "," entrada)
@@ -457,9 +461,11 @@ caminoCompleto tablero jugador
          tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
 
 vaciarCasillaSiNoEsDeJugador :: TakPlayer -> Casilla -> Casilla
-vaciarCasillaSiNoEsDeJugador jugador casilla
-        |casillaDeJugador jugador casilla = casilla
-        |True = ConstructorCasilla []
+--vaciar casilla si no es jugador, o es vertical
+vaciarCasillaSiNoEsDeJugador jugador casilla = if ok then casilla else (ConstructorCasilla [])
+   where
+      fichaArriba = fichaDeArriba casilla
+      ok = fichaArriba == (Just (Horizontal jugador))
 
 showFicha :: Ficha -> String
 showFicha (Horizontal ply) = " H" ++ "-" ++show (ply) 
@@ -501,7 +507,7 @@ runMatch :: (TakAgent, TakAgent) -> TakGame -> IO [(TakPlayer, Int)]
 runMatch ags@(ag1, ag2) g = do
    putStrLn (showBoard g)
    case (activePlayer g) of
-      Nothing -> return $ scoreYResult g
+      Nothing -> return $ scoreYResult g --se cambio score por scoreYResult
       Just p -> do
          let ag = [ag1, ag2] !! (fromJust (elemIndex p players))
          move <- ag g
@@ -510,6 +516,7 @@ runMatch ags@(ag1, ag2) g = do
 {- La función ´runOnConsole´ ejecuta toda la partida a partir del estado inicial usando dos agentes
 de consola.
 -}
+--en la llamada a runMatch WhitePlayer siempre debe ser el primer argumento, y BlackPlayer el segundo
 runOnConsole :: TakGame -> IO [(TakPlayer, Int)]
 runOnConsole g = do
    runMatch (consoleAgent WhitePlayer, consoleAgent BlackPlayer) g
