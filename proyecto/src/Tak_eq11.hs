@@ -14,6 +14,7 @@ import Data.List
 import Data.Char
 import System.Random --para que cargue bien usar stack ghci
 import Data.List.Split
+import Control.Monad
 
 
 {- Es posible que el paquete `System.Random` no esté disponible si se instaló el core de la Haskell 
@@ -83,7 +84,7 @@ posiblesMoverEnTupla desde hacia tablero = posiblesMover
       apilamientos = foldr1 (++) [ posiblesApilamientos cuantas desde hacia | cuantas <- hastaCuantasFichas ]
       posiblesMover = [ Mover desde hacia a | a <- apilamientos]
 
---Eliminia dupliados
+--Eliminia duplicados
 distintos:: [Int] -> [Int]
 distintos [] = []
 distintos[a] = [a]
@@ -110,7 +111,7 @@ posiblesApilamientos cuantas desde hasta = apilamientosValidos
       -- (0,0) (0,1) = 1 - 0 (0,0) (0,2) = 2 - 0 
       -- filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
       espacioEntreDesdeYHasta = distancia (intA3x3 desde) (intA3x3 hasta)
-      todosPosiblesApilamientos = choose espacioEntreDesdeYHasta [0..cuantas]
+      todosPosiblesApilamientos = replicateM espacioEntreDesdeYHasta [0..cuantas]
       apilamientosValidos = filter (filtrado cuantas) todosPosiblesApilamientos
       
 filtrado :: Int -> [Int] -> Bool
@@ -123,14 +124,6 @@ sinCerosALaIzquierda [x] = True
 sinCerosALaIzquierda (x:y:xs)
    |x==0 && y/=0 = False
    |True = sinCerosALaIzquierda (y:xs)
-
-
---https://stackoverflow.com/questions/35118659/haskell-permutations-with-the-length-of-the-output-list
-choose n list = concatMap permutations $ choose' list [] where
-  choose' []     r = if length r == n then [r] else []
-  choose' (x:xs) r | length r == n = [r]
-                   | otherwise     = choose' xs (x:r) 
-                                  ++ choose' xs r
 
 calculadorHacia :: TakGame -> Int -> [(Int,Int)]
 --tiene que tirar tuplas con desde y cada posible hacia
@@ -163,34 +156,32 @@ direccionesPosibles g casilla = derecha2++izquierda2++arriba2++abajo2
       arriba =  map tx3Aint (filter (\(x,y) -> x > x0 && y == y0) coordenadas3X3)
       abajo = map tx3Aint (filter (\(x,y) -> x < x0 && y == y0) coordenadas3X3)
 
-      -- casillasDerecha = map (casillaAPartirDePosicion g) derecha
-      -- intCasillaDerecha = map (intAPartirDeCasilla g) (filter casillasSinVerticalArriba casillasDerecha) 
-      -- casillasIzquierda = map (casillaAPartirDePosicion g) izquierda
-      -- intCasillaIzquierda = map (intAPartirDeCasilla g) (filter casillasSinVerticalArriba casillasIzquierda) 
-      -- casillasArriba = map (casillaAPartirDePosicion g) arriba
-      -- intCasillaArriba = map (intAPartirDeCasilla g) (filter casillasSinVerticalArriba casillasArriba) 
-      -- casillasAbajo = map (casillaAPartirDePosicion g) abajo
-      -- intCasillaAbajo = map (intAPartirDeCasilla g) (filter casillasSinVerticalArriba casillasAbajo) 
-
-      derecha2 = if derecha /= [] then [(masLejano casilla derecha)] else []
-      izquierda2 = if izquierda /= [] then [(masLejano casilla izquierda)] else []
-      arriba2 = if arriba /= [] then [(masLejano casilla arriba)] else []
-      abajo2 = if abajo /= [] then [(masLejano casilla abajo)] else []
+      derechaSinV = filter (verticalEntre g casilla) derecha
+      izquierdaSinV = filter (verticalEntre g casilla) izquierda
+      arribaSinV = filter (verticalEntre g casilla) arriba
+      abajoSinV = filter (verticalEntre g casilla) abajo
+      
+      derecha2 = if derechaSinV /= [] then [(masLejano casilla derechaSinV)] else []
+      izquierda2 = if izquierdaSinV /= [] then [(masLejano casilla izquierdaSinV)] else []
+      arriba2 = if arribaSinV /= [] then [(masLejano casilla arribaSinV)] else []
+      abajo2 = if abajoSinV /= [] then [(masLejano casilla abajoSinV)] else []
       --en cada guarda que se quede con el que esta mas lejos
       --distancia (intA3x3 desde) (intA3x3 hasta)
 
-casillasSinVerticalArriba :: Casilla -> Bool
-casillasSinVerticalArriba casilla = "V" /= orientacion
+verticalEntre :: TakGame -> Int -> Int -> Bool
+--verifica si hay una ficha vertical entre las posiciones pasadas por parametro
+verticalEntre (ConstructorTakGame tablero _) a b = algunaVertical 
+   where
+      --filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
+      recorridoEntreAyB = map tx3Aint (filaOColumnaEnComun (intA3x3 a) (intA3x3 b))
+      casillas = map (tablero!!) recorridoEntreAyB
+      algunaVertical = foldr (&&) True  (map casillaSinVerticalArriba casillas)
+
+casillaSinVerticalArriba :: Casilla -> Bool
+casillaSinVerticalArriba casilla = "H" == orientacion
    where
       ficha = fromMaybe (Horizontal WhitePlayer) (fichaDeArriba casilla)
       orientacion = orientacionFicha ficha
-
-casillaAPartirDePosicion :: TakGame -> Int -> Casilla
-casillaAPartirDePosicion (ConstructorTakGame tablero jugador) posicion = tablero!!posicion
-
-intAPartirDeCasilla :: TakGame -> Casilla -> Int
-intAPartirDeCasilla (ConstructorTakGame tablero jugador) casilla = fromMaybe 0 (elemIndex casilla tablero)
-
 
 next :: TakGame -> (TakPlayer, TakAction) -> TakGame -- Esta función aplica una acción sobre un estado de juego dado, y retorna 
                                                          -- jugador activo, si el juego está terminado, o si la acción no es realizable. 
@@ -200,9 +191,6 @@ next (ConstructorTakGame casillas BlackPlayer) (jugador, c@(Colocar cas ficha) )
 --mover :: Tablero -> (TakPlayer, TakAction) -> Tablero
 next (ConstructorTakGame casillas WhitePlayer) (jugador, m@(Mover desde hasta apila) ) = ConstructorTakGame (mover casillas (jugador, m ) ) (BlackPlayer)    
 next (ConstructorTakGame casillas BlackPlayer) (jugador, m@(Mover desde hasta apila) ) = ConstructorTakGame (mover casillas (jugador, m ) ) (WhitePlayer)
-
-
-
 
 casillaVacia :: Casilla -> Bool
 casillaVacia (ConstructorCasilla [] ) = True
