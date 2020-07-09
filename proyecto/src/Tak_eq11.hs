@@ -81,7 +81,7 @@ posiblesMoverEnTupla desde hacia tablero = posiblesMover
       (ConstructorCasilla fichas) = (tablero!!desde)
       fichasActuales = length fichas
       --posiblesApilamientos :: Int -> Int -> Int -> [[Int]]
-      apilamientos = foldr1 (++) [ posiblesApilamientos cuantas desde hacia | cuantas <- hastaCuantasFichas ]
+      apilamientos = foldr1 (++) [ posiblesApilamientos tablero cuantas desde hacia | cuantas <- hastaCuantasFichas ]
       posiblesMover = [ Mover desde hacia a | a <- apilamientos]
 
 --Eliminia duplicados
@@ -104,13 +104,13 @@ distancia (x1,y1) (x2,y2)
    |y1==y2 = abs (x2 - x1)
    |otherwise = error "No hay filas ni columnas en comun"
 
-posiblesApilamientos :: Int -> Int -> Int -> [[Int]]
+posiblesApilamientos :: Tablero -> Int -> Int -> Int -> [[Int]]
 -- cuantas, desde, hasta
-posiblesApilamientos cuantas desde hasta = apilamientosValidos
+posiblesApilamientos tablero cuantas desde hasta = apilamientosValidos
    where
       -- (0,0) (0,1) = 1 - 0 (0,0) (0,2) = 2 - 0 
       -- filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
-      espacioEntreDesdeYHasta = distancia (intA3x3 desde) (intA3x3 hasta)
+      espacioEntreDesdeYHasta = distancia (intANxN tablero desde) (intANxN tablero hasta)
       todosPosiblesApilamientos = replicateM espacioEntreDesdeYHasta [0..cuantas]
       apilamientosValidos = filter (filtrado cuantas) todosPosiblesApilamientos
       
@@ -137,43 +137,43 @@ posicionesDeJugador (ConstructorTakGame tablero activo) = indicesPosiciones
       where
          indicesPosiciones = findIndices (casillaDeJugador activo) tablero
 
-masLejano :: Int -> [Int] -> Int
-masLejano origen posibles = elMasLejano
+masLejano :: Tablero -> Int -> [Int] -> Int
+masLejano tablero origen posibles = elMasLejano
    where
-      origen3x3 = intA3x3 origen
-      posibles3x3 = map intA3x3 posibles
-      distancias = map (distancia origen3x3) posibles3x3
+      origenNxN = intANxN tablero  origen
+      posiblesNxN = map (intANxN tablero) posibles
+      distancias = map (distancia origenNxN) posiblesNxN
       mayorDistancia = maximum distancias
       posicionDelMayor = fromMaybe 0 (elemIndex mayorDistancia distancias)
       elMasLejano = posibles!!posicionDelMayor
 
 direccionesPosibles :: TakGame -> Int -> [Int]   
-direccionesPosibles g casilla = derecha2++izquierda2++arriba2++abajo2
+direccionesPosibles g@(ConstructorTakGame tablero _) casilla = derecha2++izquierda2++arriba2++abajo2
    where
-      (x0,y0) = intA3x3 casilla
-      derecha =  map tx3Aint (filter (\(x,y) -> x == x0 && y > y0) coordenadas3X3) 
-      izquierda =  map tx3Aint (filter (\(x,y) -> x == x0 && y < y0) coordenadas3X3)
-      arriba =  map tx3Aint (filter (\(x,y) -> x > x0 && y == y0) coordenadas3X3)
-      abajo = map tx3Aint (filter (\(x,y) -> x < x0 && y == y0) coordenadas3X3)
+      (x0,y0) = intANxN tablero casilla
+      derecha =  map (nxNAint tablero)  (filter (\(x,y) -> x == x0 && y > y0) (coordenadasNxNT tablero)) 
+      izquierda =  map (nxNAint tablero) (filter (\(x,y) -> x == x0 && y < y0) (coordenadasNxNT tablero))
+      arriba =  map (nxNAint tablero) (filter (\(x,y) -> x > x0 && y == y0) (coordenadasNxNT tablero))
+      abajo = map (nxNAint tablero) (filter (\(x,y) -> x < x0 && y == y0) (coordenadasNxNT tablero))
 
       derechaSinV = filter (verticalEntre g casilla) derecha
       izquierdaSinV = filter (verticalEntre g casilla) izquierda
       arribaSinV = filter (verticalEntre g casilla) arriba
       abajoSinV = filter (verticalEntre g casilla) abajo
       
-      derecha2 = if derechaSinV /= [] then [(masLejano casilla derechaSinV)] else []
-      izquierda2 = if izquierdaSinV /= [] then [(masLejano casilla izquierdaSinV)] else []
-      arriba2 = if arribaSinV /= [] then [(masLejano casilla arribaSinV)] else []
-      abajo2 = if abajoSinV /= [] then [(masLejano casilla abajoSinV)] else []
+      derecha2 = if derechaSinV /= [] then [(masLejano tablero casilla derechaSinV)] else []
+      izquierda2 = if izquierdaSinV /= [] then [(masLejano tablero casilla izquierdaSinV)] else []
+      arriba2 = if arribaSinV /= [] then [(masLejano tablero casilla arribaSinV)] else []
+      abajo2 = if abajoSinV /= [] then [(masLejano tablero casilla abajoSinV)] else []
       --en cada guarda que se quede con el que esta mas lejos
-      --distancia (intA3x3 desde) (intA3x3 hasta)
+      --distancia (intANxN tablero desde) (intANxN tablero hasta)
 
 verticalEntre :: TakGame -> Int -> Int -> Bool
 --verifica si hay una ficha vertical entre las posiciones pasadas por parametro
 verticalEntre (ConstructorTakGame tablero _) a b = algunaVertical 
    where
       --filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
-      recorridoEntreAyB = map tx3Aint (filaOColumnaEnComun (intA3x3 a) (intA3x3 b))
+      recorridoEntreAyB = map (nxNAint tablero) (filaOColumnaEnComun tablero (intANxN tablero a) (intANxN tablero b))
       casillas = map (tablero!!) recorridoEntreAyB
       algunaVertical = foldr (&&) True  (map casillaSinVerticalArriba casillas)
 
@@ -265,46 +265,55 @@ scoreYResult game@(ConstructorTakGame tablero _) = resultado ++ puntajeConTabler
       puntajeTablero = length tablero
       puntajeConTablero = agregarPuntajeTablero elGanador puntajeTablero puntajeSinTablero
 
-coordenadas3X3 :: [(Int,Int)] 
-coordenadas3X3 = map (\n -> divMod n 3) [0..8]
-
-intA3x3 :: Int -> (Int,Int)
-intA3x3 posicion =  coords !! posicion 
+coordenadasNxN :: Int -> [(Int,Int)]
+coordenadasNxN largoTablero = stringIndices
    where
-      coords = coordenadas3X3
+      largoFila = (floor (sqrt (fromIntegral largoTablero)))
+      stringIndices = map (\n -> divMod n largoFila ) [0..(largoTablero-1)]
 
-tx3Aint :: (Int,Int) -> Int
-tx3Aint tupla = if (resultado==Nothing) 
+coordenadasNxNT :: Tablero -> [(Int,Int)]
+coordenadasNxNT tablero = coordenadasNxN (length tablero)
+
+
+intANxN :: Tablero -> Int -> (Int,Int)
+intANxN tablero posicion = (coordenadasNxN largo)!!posicion
+   where
+      largo = length tablero
+
+nxNAint :: Tablero -> (Int,Int) -> Int
+nxNAint tablero tupla = if (resultado==Nothing) 
    then error "coordenadas no válidas" 
    else fromMaybe 0 resultado
       --Nothing
       --Just 8
-      where resultado = elemIndex tupla coordenadas3X3
+      where 
+         largo = length tablero
+         resultado = elemIndex tupla (coordenadasNxN largo)
       
-showAction :: TakAction -> String
-showAction (Colocar int ficha) = "C " ++ show (intA3x3 int) ++" "++ showFicha (ficha)
-showAction (Mover desde direccion apilamiento) = "M " ++ show (intA3x3 desde) ++" "++ show (intA3x3 direccion) ++ (show apilamiento)
+showAction :: Tablero -> TakAction -> String
+showAction tablero (Colocar int ficha) = "C " ++ show (intANxN tablero int) ++" "++ showFicha (ficha)
+showAction tablero (Mover desde direccion apilamiento) = "M " ++ show (intANxN tablero desde) ++" "++ show (intANxN tablero direccion) ++ (show apilamiento)
 
-readCoord :: [String] -> Int
-readCoord [x0,y0] = elInt
+readCoord :: Tablero -> [String] -> Int
+readCoord tablero [x0,y0] = elInt
    where
-      elInt = tx3Aint(intx0,inty0)
+      elInt = nxNAint tablero (intx0,inty0)
       intx0 = read x0
       inty0 = read y0
-readCoord _ = error "error readCoord"
+readCoord _ _= error "error readCoord"
 
-readAction2 :: [String] -> TakAction
+readAction2 :: Tablero -> [String] -> TakAction
 --data TakAction = Colocar Int Ficha | Mover Int Int [Int] deriving (Eq, Show
 --data Ficha = Horizontal TakPlayer | Vertical TakPlayer deriving (Eq,Show)
-readAction2 ["C",x0,y0,"H","W"] = Colocar (readCoord [x0,y0]) (Horizontal WhitePlayer)
-readAction2 ["C",x0,y0,"H","B"] = Colocar (readCoord [x0,y0]) (Horizontal BlackPlayer)
-readAction2 ["C",x0,y0,"V","W"] = Colocar (readCoord [x0,y0]) (Vertical WhitePlayer)
-readAction2 ["C",x0,y0,"V","B"] = Colocar (readCoord [x0,y0]) (Vertical BlackPlayer)
-readAction2 ["M",x0,y0,x1,y1,lista] = Mover (readCoord [x0,y0]) (readCoord [x1,y1]) (map digitToInt lista)
-readAction2 _ = Invalido 
+readAction2 tablero ["C",x0,y0,"H","W"] = Colocar (readCoord tablero [x0,y0]) (Horizontal WhitePlayer)
+readAction2 tablero ["C",x0,y0,"H","B"] = Colocar (readCoord tablero [x0,y0]) (Horizontal BlackPlayer)
+readAction2 tablero ["C",x0,y0,"V","W"] = Colocar (readCoord tablero [x0,y0]) (Vertical WhitePlayer)
+readAction2 tablero ["C",x0,y0,"V","B"] = Colocar (readCoord tablero [x0,y0]) (Vertical BlackPlayer)
+readAction2 tablero ["M",x0,y0,x1,y1,lista] = Mover (readCoord tablero [x0,y0]) (readCoord tablero [x1,y1]) (map digitToInt lista)
+readAction2 _ _ = Invalido
 
-readAction :: String -> TakAction
-readAction entrada = readAction2 (splitOn "," entrada)
+readAction :: Tablero -> String -> TakAction
+readAction tablero entrada = readAction2 tablero (splitOn "," entrada)
 
    
 activePlayer :: TakGame -> Maybe TakPlayer
@@ -326,23 +335,23 @@ desapilarDeCasilla (ConstructorCasilla fichas) cuantas = (desapiladas,casillaNue
          nuevaPilaEnCasilla = take ((length fichas) - cuantas) fichas
          casillaNueva = (ConstructorCasilla nuevaPilaEnCasilla)
 
-filaOColumnaEnComun :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
-filaOColumnaEnComun (x1,y1) (x2,y2)
-   |x1==x2 && y1<y2 = filter (\x-> (fst x == x1) && (snd x <= y2) && (snd x > y1 ) ) coordenadas3X3  --de izquierda a derecha
-   |x1==x2 && y1>y2 = reverse (filter (\x-> (fst x == x1) && (snd x >= y2) && (snd x < y1)) coordenadas3X3)  --de derecha a izquierda
+filaOColumnaEnComun :: Tablero -> (Int,Int) -> (Int,Int) -> [(Int,Int)]
+filaOColumnaEnComun tablero (x1,y1) (x2,y2)
+   |x1==x2 && y1<y2 = filter (\x-> (fst x == x1) && (snd x <= y2) && (snd x > y1 ) ) (coordenadasNxNT tablero)  --de izquierda a derecha
+   |x1==x2 && y1>y2 = reverse (filter (\x-> (fst x == x1) && (snd x >= y2) && (snd x < y1)) (coordenadasNxNT tablero))  --de derecha a izquierda
 
-   |y1==y2 && x1>x2 = reverse (filter (\y-> (snd y == y1) && (fst y >= x2) && (fst y < x1)) coordenadas3X3)  --de arriba para abajo   -- invertir esta lista
-   |y1==y2 && x1<x2 = filter (\y-> (snd y == y1) && (fst y <= x2) && (fst y > x1)) coordenadas3X3  --de abajo para arriba
-filaOColumnaEnComun _ _ = []
+   |y1==y2 && x1>x2 = reverse (filter (\y-> (snd y == y1) && (fst y >= x2) && (fst y < x1)) (coordenadasNxNT tablero))  --de arriba para abajo   -- invertir esta lista
+   |y1==y2 && x1<x2 = filter (\y-> (snd y == y1) && (fst y <= x2) && (fst y > x1)) (coordenadasNxNT tablero )  --de abajo para arriba
+filaOColumnaEnComun _ _ _= []
 
 casillasEnDireccion :: Tablero -> Int -> Int -> Int -> ([Casilla],[Int])
 --le decis tablero, desde, hacia, cuantas
 casillasEnDireccion tablero desde hacia cuantas = (casillasResultado,posicionesResultado)
    where
-      desdeEnCoordenadas = intA3x3 desde
-      haciaEnCoordenadas = intA3x3 hacia
-      fOCEnComun = filaOColumnaEnComun desdeEnCoordenadas haciaEnCoordenadas
-      posicionesResultado = take cuantas (map tx3Aint fOCEnComun)
+      desdeEnCoordenadas = intANxN tablero desde
+      haciaEnCoordenadas = intANxN tablero hacia
+      fOCEnComun = filaOColumnaEnComun tablero desdeEnCoordenadas haciaEnCoordenadas
+      posicionesResultado = take cuantas (map (nxNAint tablero) fOCEnComun)
       casillasResultado = [tablero!!x | x<-posicionesResultado]
 
 setLista :: (Eq a) => [a] -> Int -> a -> [a]
@@ -440,24 +449,92 @@ caminoCompleto tablero jugador
       --si existiera una funcion magica que tire cada una de estas listas se puede
       --hacer un map o algo asi con todas
       -- funcionMagica :: Tablero -> [[Int]]
-      |posicionesLlenas tableroSoloConFichasJugador [0,3,6] = True
-      |posicionesLlenas tableroSoloConFichasJugador [1,4,7] = True
-      |posicionesLlenas tableroSoloConFichasJugador [2,5,8] = True
+      |length tablero == 9 = camino3x3 tablero jugador
+      |length tablero == 16 = camino4x4 tablero jugador
+      |otherwise = False
+         
+camino3x3 :: Tablero -> TakPlayer -> Bool
+camino3x3 tablero jugador
+   |posicionesLlenas tableroSoloConFichasJugador [0,3,6] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,4,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,5,8] = True
 
-      |posicionesLlenas tableroSoloConFichasJugador [0,1,2] = True
-      |posicionesLlenas tableroSoloConFichasJugador [3,4,5] = True
-      |posicionesLlenas tableroSoloConFichasJugador [6,7,8] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,1,2] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,4,5] = True
+   |posicionesLlenas tableroSoloConFichasJugador [6,7,8] = True
 
-      |posicionesLlenas tableroSoloConFichasJugador [0,3,4,7] = True
-      |posicionesLlenas tableroSoloConFichasJugador [1,4,5,8] = True
-      |posicionesLlenas tableroSoloConFichasJugador [2,5,4,7] = True
-      |posicionesLlenas tableroSoloConFichasJugador [1,4,3,6] = True
-      |posicionesLlenas tableroSoloConFichasJugador [0,1,4,5] = True
-      |posicionesLlenas tableroSoloConFichasJugador [3,4,7,8] = True
-      |posicionesLlenas tableroSoloConFichasJugador [6,7,4,5] = True
-      |posicionesLlenas tableroSoloConFichasJugador [3,4,1,2] = True
-      |True  = False
+   |posicionesLlenas tableroSoloConFichasJugador [0,3,4,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,4,5,8] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,5,4,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,4,3,6] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,1,4,5] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,4,7,8] = True
+   |posicionesLlenas tableroSoloConFichasJugador [6,7,4,5] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,4,1,2] = True
+   |otherwise = False
       where
+         tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
+
+camino4x4 :: Tablero -> TakPlayer -> Bool
+camino4x4 tablero jugador
+   |posicionesLlenas tableroSoloConFichasJugador [0,1,2,3] = True
+   |posicionesLlenas tableroSoloConFichasJugador [4,5,6,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [8,9,10,11] = True
+   |posicionesLlenas tableroSoloConFichasJugador [12,13,14,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,4,8,12] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,5,9,13] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,6,10,14] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,7,11,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,4,5,9,13] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,4,5,6,10,14] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,4,5,9,10,14] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,4,5,9,13] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,4,8,9,10,14] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,5,4,8,12] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,5,9,8,12] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,5,6,10,14] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,5,9,10,14] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,5,6,7,11,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,5,6,10,11,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,6,5,4,8,12] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,6,10,9,8,12] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,6,5,9,8,12] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,6,5,9,13] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,6,10,9,13] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,6,7,11,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [2,6,10,11,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [1,5,9,10,11,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,7,6,5,9,13] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,7,11,10,9,13] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,7,6,10,9,13] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,7,6,10,14] = True
+   |posicionesLlenas tableroSoloConFichasJugador [3,7,11,10,14] = True
+   |posicionesLlenas tableroSoloConFichasJugador [12,13,14,10,11] = True
+   |posicionesLlenas tableroSoloConFichasJugador [12,13,9,10,11] = True
+   |posicionesLlenas tableroSoloConFichasJugador [12,13,9,5,6,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [12,13,9,10,6,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [12,13,14,10,6,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [8,9,13,14,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [8,9,10,14,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [8,9,5,6,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [8,9,10,6,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [8,9,5,1,2,3] = True
+   |posicionesLlenas tableroSoloConFichasJugador [8,9,10,6,2,3] = True
+   |posicionesLlenas tableroSoloConFichasJugador [8,9,5,6,2,3] = True
+   |posicionesLlenas tableroSoloConFichasJugador [4,5,1,2,3] = True
+   |posicionesLlenas tableroSoloConFichasJugador [4,5,6,2,3] = True
+   |posicionesLlenas tableroSoloConFichasJugador [4,5,9,10,11] = True
+   |posicionesLlenas tableroSoloConFichasJugador [4,5,6,10,11] = True
+   |posicionesLlenas tableroSoloConFichasJugador [4,5,9,13,14,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [4,5,9,10,14,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [4,5,6,10,14,15] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,1,2,6,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,1,5,6,7] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,1,5,9,10,11] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,1,5,6,10,11] = True
+   |posicionesLlenas tableroSoloConFichasJugador [0,1,2,6,10,11] = True
+   |otherwise = False
+      where 
          tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
 
 vaciarCasillaSiNoEsDeJugador :: TakPlayer -> Casilla -> Casilla
@@ -481,15 +558,18 @@ showCasilla (ConstructorCasilla fichas) = (foldr1 (++) (map showFicha fichas)) +
 showTablero :: Tablero -> String
 showTablero tablero = foldr1 (++) (indiceYCasilla)
         where
+            largoTablero = length tablero
+            largoFila = (floor (sqrt (fromIntegral largoTablero)))
             stringCasillas = map showCasilla tablero
-            stringIndices = map (\n -> divMod n 3) [0..8]
+            stringIndices = map (\n -> divMod n largoFila ) [0..(largoTablero-1)]
             indiceYCasilla = zipWith (++) (map show stringIndices) stringCasillas
 
 showBoard :: TakGame -> String -- Convierte el estado de juego a un texto que puede ser impreso en la consola para mostrar el tablero y demás información de la partida. 
 showBoard (ConstructorTakGame tablero WhitePlayer) = "Le toca a Blancas " ++ "\n" ++  (showTablero tablero)
 showBoard (ConstructorTakGame tablero BlackPlayer) = "Le toca a Negras "++ "\n" ++ (showTablero tablero)
-    
 
+--showBoard :: TakGame -> String
+--showBoard g = "hola amigos"
 
 players :: [TakPlayer]
 players = [minBound..maxBound]
@@ -527,6 +607,14 @@ run3x3OnConsole = runOnConsole beginning3x3
 run4x4OnConsole :: IO [(TakPlayer, Int)]
 run4x4OnConsole = runOnConsole beginning4x4
 
+runRandom3x3 :: IO [(TakPlayer, Int)]
+runRandom3x3 = do
+   runMatch (randomAgent WhitePlayer, randomAgent BlackPlayer) beginning3x3
+
+runRandom4x4 :: IO [(TakPlayer, Int)]
+runRandom4x4 = do
+   runMatch (randomAgent WhitePlayer, randomAgent BlackPlayer) beginning4x4
+
 {- El agente de consola ´consoleAgent´ muestra el estado de juego y los movimientos disponibles por
 consola, y espera una acción por entrada de texto.
 -}
@@ -538,10 +626,10 @@ consoleAgent player state = do
       getLine
       return Nothing
    else do
-      putStrLn ("Select one move:" ++ concat ["\n"++ showAction m | m <- moves])--se cambio show por showAction
+      putStrLn ("Select one move:" ++ concat ["\n"++ showAction (getTablero state) m | m <- moves])--se cambio show por showAction
       putStrLn (show (length moves) ++ "movimientos")
       line <- getLine
-      let input = readAction line
+      let input = readAction (getTablero state) line --se cambio readAction para que reciba el tablero
       if elem input moves then return (Just input) else do 
          putStrLn "Invalid move!"
          consoleAgent player state
