@@ -1,62 +1,26 @@
-import Data.List
+module Prueba2 where
+
 import Data.Maybe
+import Data.List
 import Data.Char
+import System.Random --para que cargue bien usar stack ghci
+import Data.List.Split
+import Control.Monad
+import Data.List ((\\))
 
-data Ficha = Horizontal TakPlayer | Vertical TakPlayer deriving (Eq,Show)
+
 type Tablero = [Casilla]
-data TakPlayer = WhitePlayer | BlackPlayer deriving (Eq, Enum, Bounded)
-data TakGame = ConstructorTakGame Tablero TakPlayer deriving (Eq,Show)
-data TakAction = Colocar Int Ficha | Mover Int Int [Int] | Invalido deriving (Eq, Show)
 data Casilla = ConstructorCasilla [Ficha] deriving (Eq,Show)
-
-
-instance Show TakPlayer where
-   show WhitePlayer = "W"
-   show BlackPlayer = "B"
-
-takeHasta :: (Eq a) => [a] -> (a->Bool)-> [a]
---hace un take en la lista desde el principio hasta una posicion antes
---de la primera ocurrencia del primer elemento que cumpla con la condicion en f
-takeHasta lista f
-   |posicionPrimero == (-1) = lista
-   |otherwise = take posicionPrimero lista
-   where
-      mapAf = map f lista
-      posicionPrimero = fromMaybe (-1) (elemIndex True mapAf)
-
-vaciarCasillaSiNoEsDeJugador :: TakPlayer -> Casilla -> Casilla
---vaciar casilla si no es jugador, o es vertical
-vaciarCasillaSiNoEsDeJugador jugador casilla = if ok then casilla else (ConstructorCasilla [])
-   where
-      fichaArriba = fichaDeArriba casilla
-      ok = fichaArriba == (Just (Horizontal jugador))
-
-posicionesLlenas :: Tablero -> [Int] -> Bool
-posicionesLlenas tablero posiciones = foldr1 (&&) llenas
-        where
-            llenas = [ not (casillaVacia (tablero!!x)) | x <- posiciones]
-
-fichaDeArriba :: Casilla -> Maybe Ficha
-fichaDeArriba (ConstructorCasilla fichas) = if fichas == [] then Nothing else (Just (last fichas))
-
-casillaVacia :: Casilla -> Bool
-casillaVacia (ConstructorCasilla [] ) = True
-casillaVacia _ = False
+data Ficha = Horizontal TakPlayer | Vertical TakPlayer deriving (Eq,Show)
+data TakPlayer = WhitePlayer | BlackPlayer deriving (Eq, Enum, Bounded,Show)
+data TakGame = ConstructorTakGame Tablero TakPlayer deriving (Eq,Show)
 
 
 
+type Coord = (Int, Int)
+type Path = [Coord]
 
 
-caminoCompleto :: Tablero -> TakPlayer -> Bool
-caminoCompleto tablero jugador
-
-      --si existiera una funcion magica que tire cada una de estas listas se puede
-      --hacer un map o algo asi con todas
-      -- funcionMagica :: Tablero -> [[Int]]
-      |length tablero == 9 = camino3x3 tablero jugador
-      |length tablero == 16 = camino4x4 tablero jugador
-      |otherwise = False
-         
 camino3x3 :: Tablero -> TakPlayer -> Bool
 camino3x3 tablero jugador
    |posicionesLlenas tableroSoloConFichasJugador [0,3,6] = True
@@ -140,3 +104,10 @@ camino4x4 tablero jugador
    |otherwise = False
       where 
          tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
+
+vaciarCasillaSiNoEsDeJugador :: TakPlayer -> Casilla -> Casilla
+--vaciar casilla si no es jugador, o es vertical
+vaciarCasillaSiNoEsDeJugador jugador casilla = if ok then casilla else (ConstructorCasilla [])
+   where
+      fichaArriba = fichaDeArriba casilla
+      ok = fichaArriba == (Just (Horizontal jugador))

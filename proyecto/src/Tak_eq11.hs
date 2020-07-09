@@ -50,6 +50,7 @@ instance Show TakPlayer where
 beginning3x3 :: TakGame -- El estado inicial del juego Tak con un tablero de 3x3, con el tablero vacío. 
 beginning3x3 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..9]] WhitePlayer
 
+
 beginning4x4 :: TakGame -- El estado inicial del juego Tak con un tablero de 4x4, con el tablero vacío. 
 beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..16]] WhitePlayer
 
@@ -242,8 +243,8 @@ result g@(ConstructorTakGame tablero jugadorActual)
    |caminoCompletoBlack = [(WhitePlayer,(-1)),(BlackPlayer,(1))]
    |tablerollen = [(WhitePlayer,0),(BlackPlayer,(0))]
       where
-         caminoCompletoWhite = caminoCompleto tablero WhitePlayer
-         caminoCompletoBlack = caminoCompleto tablero BlackPlayer
+         caminoCompletoWhite = caminoCompleto (ConstructorTakGame tablero WhitePlayer)
+         caminoCompletoBlack = caminoCompleto (ConstructorTakGame tablero BlackPlayer)
          tablerollen = tableroLleno tablero
 
 ganador :: [(TakPlayer, Int)] -> Maybe TakPlayer
@@ -259,7 +260,7 @@ agregarPuntajeTablero (Just BlackPlayer) puntajeTablero [(WhitePlayer,p1),(Black
 scoreYResult :: TakGame -> [(TakPlayer, Int)]
 scoreYResult game@(ConstructorTakGame tablero _) = resultado ++ puntajeConTablero 
    where 
-      resultado = result game
+      resultado = result game 
       elGanador = ganador resultado
       puntajeSinTablero = score game 
       puntajeTablero = length tablero
@@ -315,11 +316,10 @@ readAction2 _ _ = Invalido
 readAction :: Tablero -> String -> TakAction
 readAction tablero entrada = readAction2 tablero (splitOn "," entrada)
 
-   
 activePlayer :: TakGame -> Maybe TakPlayer
 --activePlayer tiene que verificar si alguien completo un camino, y si es así, devolver Nothing
 activePlayer g@(ConstructorTakGame tablero _)
-   |(caminoCompleto tablero WhitePlayer) || (caminoCompleto tablero BlackPlayer) = Nothing
+   |(caminoCompleto  (ConstructorTakGame tablero WhitePlayer)) || (caminoCompleto (ConstructorTakGame tablero BlackPlayer)) = Nothing
    |True = listToMaybe [p | (p, as) <- actions g, not (null as)]
 
 --el caso en el que se lleno el tablero esta contemplado aca:
@@ -443,107 +443,27 @@ posicionesLlenas tablero posiciones = foldr1 (&&) llenas
         where
             llenas = [ not (casillaVacia (tablero!!x)) | x <- posiciones]
 
-caminoCompleto :: Tablero -> TakPlayer -> Bool
-caminoCompleto tablero jugador
+caminoCompleto :: TakGame -> Bool
+caminoCompleto g@(ConstructorTakGame tablero jugador) = (length caminosGanadores) /= 0
 
-      --si existiera una funcion magica que tire cada una de estas listas se puede
-      --hacer un map o algo asi con todas
-      -- funcionMagica :: Tablero -> [[Int]]
-      |length tablero == 9 = camino3x3 tablero jugador
-      |length tablero == 16 = camino4x4 tablero jugador
-      |otherwise = False
-         
-camino3x3 :: Tablero -> TakPlayer -> Bool
-camino3x3 tablero jugador
-   |posicionesLlenas tableroSoloConFichasJugador [0,3,6] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,4,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,5,8] = True
-
-   |posicionesLlenas tableroSoloConFichasJugador [0,1,2] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,4,5] = True
-   |posicionesLlenas tableroSoloConFichasJugador [6,7,8] = True
-
-   |posicionesLlenas tableroSoloConFichasJugador [0,3,4,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,4,5,8] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,5,4,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,4,3,6] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,1,4,5] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,4,7,8] = True
-   |posicionesLlenas tableroSoloConFichasJugador [6,7,4,5] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,4,1,2] = True
-   |otherwise = False
       where
-         tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
+         --caminoGanador :: Tablero -> Path -> Bool
+         --type Coord = (Int, Int)
+         --type Path = [Coord]
+         --inicialesGanadoras :: TakGame -> [Coord]
+         --walks :: TakGame ->  Int -> [Path] -> [Path]
 
-camino4x4 :: Tablero -> TakPlayer -> Bool
-camino4x4 tablero jugador
-   |posicionesLlenas tableroSoloConFichasJugador [0,1,2,3] = True
-   |posicionesLlenas tableroSoloConFichasJugador [4,5,6,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [8,9,10,11] = True
-   |posicionesLlenas tableroSoloConFichasJugador [12,13,14,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,4,8,12] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,5,9,13] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,6,10,14] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,7,11,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,4,5,9,13] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,4,5,6,10,14] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,4,5,9,10,14] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,4,5,9,13] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,4,8,9,10,14] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,5,4,8,12] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,5,9,8,12] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,5,6,10,14] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,5,9,10,14] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,5,6,7,11,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,5,6,10,11,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,6,5,4,8,12] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,6,10,9,8,12] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,6,5,9,8,12] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,6,5,9,13] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,6,10,9,13] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,6,7,11,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [2,6,10,11,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [1,5,9,10,11,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,7,6,5,9,13] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,7,11,10,9,13] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,7,6,10,9,13] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,7,6,10,14] = True
-   |posicionesLlenas tableroSoloConFichasJugador [3,7,11,10,14] = True
-   |posicionesLlenas tableroSoloConFichasJugador [12,13,14,10,11] = True
-   |posicionesLlenas tableroSoloConFichasJugador [12,13,9,10,11] = True
-   |posicionesLlenas tableroSoloConFichasJugador [12,13,9,5,6,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [12,13,9,10,6,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [12,13,14,10,6,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [8,9,13,14,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [8,9,10,14,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [8,9,5,6,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [8,9,10,6,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [8,9,5,1,2,3] = True
-   |posicionesLlenas tableroSoloConFichasJugador [8,9,10,6,2,3] = True
-   |posicionesLlenas tableroSoloConFichasJugador [8,9,5,6,2,3] = True
-   |posicionesLlenas tableroSoloConFichasJugador [4,5,1,2,3] = True
-   |posicionesLlenas tableroSoloConFichasJugador [4,5,6,2,3] = True
-   |posicionesLlenas tableroSoloConFichasJugador [4,5,9,10,11] = True
-   |posicionesLlenas tableroSoloConFichasJugador [4,5,6,10,11] = True
-   |posicionesLlenas tableroSoloConFichasJugador [4,5,9,13,14,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [4,5,9,10,14,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [4,5,6,10,14,15] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,1,2,6,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,1,5,6,7] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,1,5,9,10,11] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,1,5,6,10,11] = True
-   |posicionesLlenas tableroSoloConFichasJugador [0,1,2,6,10,11] = True
-   |otherwise = False
-      where 
-         tableroSoloConFichasJugador = map (vaciarCasillaSiNoEsDeJugador jugador) tablero
-
-vaciarCasillaSiNoEsDeJugador :: TakPlayer -> Casilla -> Casilla
---vaciar casilla si no es jugador, o es vertical
-vaciarCasillaSiNoEsDeJugador jugador casilla = if ok then casilla else (ConstructorCasilla [])
-   where
-      fichaArriba = fichaDeArriba casilla
-      ok = fichaArriba == (Just (Horizontal jugador))
-
+         -- walks g 3 [[(0,0)]]
+         -- [[(1,0),(0,0)]]
+         largoTablero = length tablero
+         largoFila = (floor (sqrt (fromIntegral largoTablero)))
+         iniciales = inicialesGanadoras g                -- [ (0,0) , (0,1) ]
+         pathsInciales = [ [[x]] | x <- iniciales]       -- [ [[ (0,0) ]] ,  [[ (0,1) ]] ]
+         caminos = (map (walks g largoFila) pathsInciales) -- [  [ (1,0),(0,0)  ] ,   [ (1,0),(1,1)  ]  ]
+         caminos2 = foldr (++) [] caminos          
+         caminosGanadores = filter (caminoGanador tablero) caminos2
+         
+      
 showFicha :: Ficha -> String
 showFicha (Horizontal ply) = " H" ++ "-" ++show (ply) 
 showFicha (Vertical ply) = " V" ++ "-" ++show (ply) 
@@ -643,6 +563,79 @@ randomAgent player state = do
     else do
        i <- randomRIO (0, (length moves) - 1)
        return (Just (moves !! i))
+
+-- VALIDACION DE CAMINO GANADOR
+
+type Coord = (Int, Int)
+type Path = [Coord]
+
+
+
+
+inicialesGanadoras :: TakGame -> [Coord]
+inicialesGanadoras g = primeraFilaYColumnaFiltrada
+   where
+      primeraFilaYColumna = primeraFyC g
+      primeraFilaYColumnaFiltrada = filter (casillaGanadora g) primeraFilaYColumna
+
+primeraFyC :: TakGame -> [Coord]
+primeraFyC (ConstructorTakGame tablero _) = [ (x,y) | (x,y) <- coordenadasn , x==0 || y ==0]
+   where
+      coordenadasn = coordenadasNxNT tablero
+orthDeltas :: [Coord]
+orthDeltas = [(x, y) | x <- [-1..1], y <- [-1..1], (x == 0) /= (y == 0)]
+
+insideBoard :: Int -> Coord-> Bool
+insideBoard size (x, y) = x >= 0 && y >= 0 && x < size && y < size
+
+orthAdjacent :: TakGame -> Int -> Coord -> [Coord] 
+orthAdjacent g size (x, y) = filter ganadora (filter adentro lista)
+   where 
+      adentro = insideBoard size
+      ganadora = casillaGanadora g  
+      lista = [(x + dx, y + dy) | (dx, dy) <- orthDeltas]
+--meter filtro de que no hayan muros, y que sea del jugador
+--casillaGanadora :: TakPlayer -> Int -> Tablero -> Bool
+
+walks :: TakGame ->  Int -> [Path] -> [Path]
+walks g size paths
+  -- Punto fijo, la lista de entrada y resultado tiene los mismo valores.
+  | null (nextPaths \\ paths) = paths
+  -- Se cambiaron los caminos, hay que seguir calculando.
+  | otherwise = walks g size nextPaths
+  where step = [next:path | path <- paths, next <- orthAdjacent g size (head path), notElem next path ]
+        nextPaths = filter (\p -> (length p) <= 2 * (size - 1)) step
+
+casillaGanadora :: TakGame -> (Int,Int) -> Bool
+casillaGanadora g@(ConstructorTakGame tablero jugador)  posicion  = ok
+   where
+      pos = nxNAint tablero posicion
+      casilla = tablero!!pos
+      fichaArriba = fichaDeArriba casilla
+      ok = fichaArriba == (Just (Horizontal jugador))
+
+caminoGanador :: Tablero -> Path -> Bool
+caminoGanador tablero camino = abs (x1 - x2) == distanciaNecesariaParaGanar || abs (y1 - y2) == distanciaNecesariaParaGanar
+   --[0,1,2]
+   --[0,1,2,5]
+   -- (0,0) (1,0) (1,1) (1,2)
+   where
+      largoTablero = length tablero
+      (x1,y1) = head camino
+      (x2,y2) = last camino
+      distanciaNecesariaParaGanar = (floor (sqrt (fromIntegral largoTablero))) - 1
+      --largoFila = (floor (sqrt (fromIntegral largoTablero)))
+
+
+
+
+
+
+
+
+
+
+
 
 
 

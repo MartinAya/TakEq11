@@ -38,4 +38,18 @@ t1 = getTablero beginning3x3
 
 casillasEnDireccion t1 0 1 2
 
---
+-- prueba de walk
+
+colocar1 = Colocar 0 (Horizontal WhitePlayer)
+colocar2 = Colocar 3 (Horizontal WhitePlayer)
+colocar3 = Colocar 6 (Horizontal WhitePlayer)
+colocar4 = Colocar 1 (Horizontal BlackPlayer)
+colocar5 = Colocar 4 (Horizontal BlackPlayer)
+t1 = colocar (getTablero beginning3x3) (WhitePlayer,colocar1)
+t2 = colocar t1 (WhitePlayer,colocar2) 
+t3 = colocar t2 (WhitePlayer,colocar3)
+t4 = colocar t3 (WhitePlayer,colocar4)
+t5 = colocar t4 (WhitePlayer,colocar5)
+
+
+g = ConstructorTakGame t5 WhitePlayer
