@@ -228,11 +228,16 @@ fichasDeJugador tablero jugador = foldr1 (+) (map (fichasDeJugadorCasilla jugado
       
 
 score :: TakGame -> [(TakPlayer, Int)]
-score (ConstructorTakGame tablero _) = zip players [scoreBlancas, scoreNegras]
+score g = zip players [scoreBlancas, scoreNegras]
    where
-      fichasTotales = nFichasXJugador tablero
-      scoreBlancas = fichasTotales - (fichasDeJugador tablero WhitePlayer)
-      scoreNegras = fichasTotales - (fichasDeJugador tablero BlackPlayer)
+      scoreBlancas = casillasHJugador g WhitePlayer
+      scoreNegras = casillasHJugador g BlackPlayer
+
+--casillaGanadora :: TakGame -> (Int,Int) -> Bool
+casillasHJugador :: TakGame -> TakPlayer -> Int
+casillasHJugador g@(ConstructorTakGame tablero _) p = length (filter (==True) (map (casillaGanadora (ConstructorTakGame tablero p)) coords))
+   where
+      coords = coordenadasNxNT (getTablero g)
 
 result :: TakGame -> [(TakPlayer, Int)]
 -- 1 es que ganó, (-1) perdió, 0 empató
@@ -242,29 +247,28 @@ result g@(ConstructorTakGame tablero jugadorActual)
    |caminoCompletoWhite = [(WhitePlayer,1),(BlackPlayer,(-1))]
    |caminoCompletoBlack = [(WhitePlayer,(-1)),(BlackPlayer,(1))]
    |tablerollen = [(WhitePlayer,0),(BlackPlayer,(0))]
+   |blacksinFichas = [(WhitePlayer,1),(BlackPlayer,(-1))]
+   |whitesinFichas = [(WhitePlayer,(-1)),(BlackPlayer,(1))]
       where
          caminoCompletoWhite = caminoCompleto (ConstructorTakGame tablero WhitePlayer)
          caminoCompletoBlack = caminoCompleto (ConstructorTakGame tablero BlackPlayer)
          tablerollen = tableroLleno tablero
+         whitesinFichas = (fichasDeJugador tablero WhitePlayer)==(nFichasXJugador tablero)
+         blacksinFichas = (fichasDeJugador tablero BlackPlayer)==(nFichasXJugador tablero)
+    
 
 ganador :: [(TakPlayer, Int)] -> Maybe TakPlayer
 ganador [(WhitePlayer,1),(BlackPlayer,(-1))] = Just WhitePlayer
 ganador [(WhitePlayer,(-1)),(BlackPlayer,1)] = Just BlackPlayer
 ganador [(WhitePlayer,(0)),(BlackPlayer,0)] = Nothing
 
-agregarPuntajeTablero :: Maybe TakPlayer -> Int -> [(TakPlayer, Int)] -> [(TakPlayer, Int)]
-agregarPuntajeTablero Nothing puntajeTablero puntaje = puntaje
-agregarPuntajeTablero (Just WhitePlayer) puntajeTablero [(WhitePlayer,p1),(BlackPlayer,p2)] = [(WhitePlayer,p1+puntajeTablero),(BlackPlayer,p2)]
-agregarPuntajeTablero (Just BlackPlayer) puntajeTablero [(WhitePlayer,p1),(BlackPlayer,p2)] = [(WhitePlayer,p1),(BlackPlayer,p2+puntajeTablero)]
 
 scoreYResult :: TakGame -> [(TakPlayer, Int)]
-scoreYResult game@(ConstructorTakGame tablero _) = resultado ++ puntajeConTablero 
+scoreYResult game@(ConstructorTakGame tablero _) = resultado++puntaje
    where 
       resultado = result game 
-      elGanador = ganador resultado
-      puntajeSinTablero = score game 
-      puntajeTablero = length tablero
-      puntajeConTablero = agregarPuntajeTablero elGanador puntajeTablero puntajeSinTablero
+      puntaje= score game 
+
 
 coordenadasNxN :: Int -> [(Int,Int)]
 coordenadasNxN largoTablero = stringIndices
@@ -320,12 +324,20 @@ activePlayer :: TakGame -> Maybe TakPlayer
 --activePlayer tiene que verificar si alguien completo un camino, y si es así, devolver Nothing
 activePlayer g@(ConstructorTakGame tablero _)
    |(caminoCompleto  (ConstructorTakGame tablero WhitePlayer)) || (caminoCompleto (ConstructorTakGame tablero BlackPlayer)) = Nothing
-   |True = listToMaybe [p | (p, as) <- actions g, not (null as)]
+   |sinFichas = Nothing
+   |otherwise = listToMaybe [p | (p, as) <- actions g, not (null as)]
+   where
+      whitesinFichas = (fichasDeJugador tablero WhitePlayer)==(nFichasXJugador tablero)
+      blacksinFichas = (fichasDeJugador tablero BlackPlayer)==(nFichasXJugador tablero)
+      sinFichas = whitesinFichas || blacksinFichas
+
 
 --el caso en el que se lleno el tablero esta contemplado aca:
 --The listToMaybe function returns Nothing on an empty
 --list or Just a where a is the first element
 --of the list
+
+
 
 desapilarDeCasilla :: Casilla -> Int -> ([Ficha],Casilla)
 --devuelve las fichas desapiladas en una lista, y el nuevo estado de la casilla
@@ -437,11 +449,6 @@ casillaDeJugador jugador casilla
    |True = False
         where
             juga = getJugadorEnFicha (fichaDeArriba casilla)
-        
-posicionesLlenas :: Tablero -> [Int] -> Bool
-posicionesLlenas tablero posiciones = foldr1 (&&) llenas
-        where
-            llenas = [ not (casillaVacia (tablero!!x)) | x <- posiciones]
 
 caminoCompleto :: TakGame -> Bool
 caminoCompleto g@(ConstructorTakGame tablero jugador) = (length caminosGanadores) /= 0

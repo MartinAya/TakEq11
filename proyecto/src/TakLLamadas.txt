@@ -41,15 +41,37 @@ casillasEnDireccion t1 0 1 2
 -- prueba de walk
 
 colocar1 = Colocar 0 (Horizontal WhitePlayer)
-colocar2 = Colocar 3 (Horizontal WhitePlayer)
-colocar3 = Colocar 6 (Horizontal WhitePlayer)
-colocar4 = Colocar 1 (Horizontal BlackPlayer)
-colocar5 = Colocar 4 (Horizontal BlackPlayer)
+colocar2 = Colocar 1 (Horizontal BlackPlayer)
+colocar3 = Colocar 2 (Horizontal WhitePlayer)
+colocar4 = Colocar 3 (Horizontal BlackPlayer)
+colocar5 = Colocar 4 (Horizontal WhitePlayer)
+colocar6 = Colocar 5 (Horizontal BlackPlayer)
+colocar7 = Colocar 6 (Horizontal WhitePlayer)
+colocar8 = Colocar 7 (Horizontal BlackPlayer)
+colocar9 = Colocar 8 (Horizontal WhitePlayer)
+
 t1 = colocar (getTablero beginning3x3) (WhitePlayer,colocar1)
 t2 = colocar t1 (WhitePlayer,colocar2) 
 t3 = colocar t2 (WhitePlayer,colocar3)
 t4 = colocar t3 (WhitePlayer,colocar4)
 t5 = colocar t4 (WhitePlayer,colocar5)
+t6 = colocar t5 (WhitePlayer,colocar6)
+t7 = colocar t6 (WhitePlayer,colocar7)
+t8 = colocar t7 (WhitePlayer,colocar8)
+t9 = colocar t8 (WhitePlayer,colocar9)
 
 
-g = ConstructorTakGame t5 WhitePlayer
+g = ConstructorTakGame t9 WhitePlayer
+
+
+posicionesLlenas :: Tablero -> [Int] -> Bool
+posicionesLlenas tablero posiciones = foldr1 (&&) llenas
+        where
+            llenas = [ not (casillaVacia (tablero!!x)) | x <- posiciones]
+
+agregarPuntajeTablero :: Maybe TakPlayer -> Int -> [(TakPlayer, Int)] -> [(TakPlayer, Int)]
+agregarPuntajeTablero Nothing puntajeTablero puntaje = puntaje
+agregarPuntajeTablero (Just WhitePlayer) puntajeTablero [(WhitePlayer,p1),(BlackPlayer,p2)] = [(WhitePlayer,p1+puntajeTablero),(BlackPlayer,p2)]
+agregarPuntajeTablero (Just BlackPlayer) puntajeTablero [(WhitePlayer,p1),(BlackPlayer,p2)] = [(WhitePlayer,p1),(BlackPlayer,p2+puntajeTablero)]
+
+
