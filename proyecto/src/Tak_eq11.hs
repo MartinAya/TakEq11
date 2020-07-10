@@ -232,11 +232,11 @@ desapilarDeCasilla (ConstructorCasilla fichas) cuantas = (desapiladas,casillaNue
 
 filaOColumnaEnComun :: Tablero -> (Int,Int) -> (Int,Int) -> [(Int,Int)]
 filaOColumnaEnComun tablero (x1,y1) (x2,y2)
-   |x1==x2 && y1<y2 = filter (\x-> (fst x == x1) && (snd x <= y2) && (snd x > y1 ) ) (coordenadasNxNT tablero)  --de izquierda a derecha
-   |x1==x2 && y1>y2 = reverse (filter (\x-> (fst x == x1) && (snd x >= y2) && (snd x < y1)) (coordenadasNxNT tablero))  --de derecha a izquierda
+   |x1==x2 && y1<y2 = filter (\x-> (fst x == x1) && (snd x <= y2) && (snd x > y1 ) ) (coordenadasNxNT tablero)  
+   |x1==x2 && y1>y2 = reverse (filter (\x-> (fst x == x1) && (snd x >= y2) && (snd x < y1)) (coordenadasNxNT tablero))  
 
-   |y1==y2 && x1>x2 = reverse (filter (\y-> (snd y == y1) && (fst y >= x2) && (fst y < x1)) (coordenadasNxNT tablero))  --de arriba para abajo   -- invertir esta lista
-   |y1==y2 && x1<x2 = filter (\y-> (snd y == y1) && (fst y <= x2) && (fst y > x1)) (coordenadasNxNT tablero )  --de abajo para arriba
+   |y1==y2 && x1>x2 = reverse (filter (\y-> (snd y == y1) && (fst y >= x2) && (fst y < x1)) (coordenadasNxNT tablero))  
+   |y1==y2 && x1<x2 = filter (\y-> (snd y == y1) && (fst y <= x2) && (fst y > x1)) (coordenadasNxNT tablero )  
 filaOColumnaEnComun _ _ _= []
 
 --devuelve las casillas que estan a partir de una casilla de origen, en direccion a otra, y determinada dsitancia
@@ -460,9 +460,11 @@ caminoGanador tablero camino = abs (x1 - x2) == distanciaNecesariaParaGanar || a
 readAction :: Tablero -> String -> TakAction
 readAction tablero entrada = readAction2 tablero (splitOn "," entrada)
 
-showBoard :: TakGame -> String -- Convierte el estado de juego a un texto que puede ser impreso en la consola para mostrar el tablero y demás información de la partida. 
-showBoard (ConstructorTakGame tablero WhitePlayer) = "Le toca a Blancas " ++ "\n" ++  (showTablero tablero)
-showBoard (ConstructorTakGame tablero BlackPlayer) = "Le toca a Negras "++ "\n" ++ (showTablero tablero)
+-- Convierte el estado de juego a un texto que puede ser impreso en la 
+-- consola para mostrar el tablero y demás información de la partida. 
+showGame :: TakGame -> String 
+showGame (ConstructorTakGame tablero WhitePlayer) = "Le toca a Blancas " ++ "\n" ++  (showTablero tablero)
+showGame (ConstructorTakGame tablero BlackPlayer) = "Le toca a Negras "++ "\n" ++ (showTablero tablero)
 
 showAction :: Tablero -> TakAction -> String
 showAction tablero (Colocar int ficha) = "C " ++ show (intANxN tablero int) ++" "++ showFicha (ficha)
@@ -535,7 +537,7 @@ agentes dados. Retorna una tupla con los puntajes (score) finales del juego.
 -}
 runMatch :: (TakAgent, TakAgent) -> TakGame -> IO [(TakPlayer, Int)]
 runMatch ags@(ag1, ag2) g = do
-   putStrLn (showBoard g)
+   putStrLn (showGame g)
    case (activePlayer g) of
       Nothing -> return $ scoreYResult g --se cambio score por scoreYResult
       Just p -> do
