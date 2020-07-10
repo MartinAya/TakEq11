@@ -75,3 +75,17 @@ agregarPuntajeTablero (Just WhitePlayer) puntajeTablero [(WhitePlayer,p1),(Black
 agregarPuntajeTablero (Just BlackPlayer) puntajeTablero [(WhitePlayer,p1),(BlackPlayer,p2)] = [(WhitePlayer,p1),(BlackPlayer,p2+puntajeTablero)]
 
 
+--Eliminia duplicados
+distintos:: [Int] -> [Int]
+distintos [] = []
+distintos[a] = [a]
+distintos (x:xs)
+   |elem x xs = distintos xs
+   |otherwise = [x] ++ distintos xs
+
+subLista :: (Eq a) => [a] -> Int -> Int -> [a]
+subLista lista desde hasta
+      |hasta > length lista = error "sobrepasa la lista"
+      |desde == hasta = [lista!!hasta]
+      |desde > hasta = error "indices invalidos"
+      |otherwise = take (hasta-desde+1) (drop (desde) lista)
