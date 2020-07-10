@@ -55,19 +55,27 @@ beginning4x4 :: TakGame -- El estado inicial del juego Tak con un tablero de 4x4
 beginning4x4 = ConstructorTakGame [ ConstructorCasilla [] | _ <- [1..16]] WhitePlayer
 
 actions :: TakGame -> [(TakPlayer, [TakAction])]
+--si hay cero o una ficha hay que invertir el resultado  de las lineas 60 y 61
+
 actions g@(ConstructorTakGame tablero activo)
-   |activo == WhitePlayer = [(BlackPlayer,[]),(WhitePlayer,posiblesColocarH++posiblesColocarV++posiblesMover2)]
-   |activo == BlackPlayer  = [(WhitePlayer,[]),(BlackPlayer,posiblesColocarH++posiblesColocarV++posiblesMover2)]
+   |totalFichas == 0 = [(BlackPlayer,[]),(WhitePlayer, posiblesColocarHBlack)]--primer turno blancas : coloca una negra
+   |totalFichas == 1 = [(WhitePlayer,[]),(BlackPlayer,posiblesColocarHWhite)]
+   |activo == WhitePlayer = [(BlackPlayer,[]),(WhitePlayer,posiblesColocarHWhite++posiblesColocarVWhite++posiblesMover2)]
+   |activo == BlackPlayer  = [(WhitePlayer,[]),(BlackPlayer,posiblesColocarHBlack++posiblesColocarVBlack++posiblesMover2)]
    --mover :: Tablero -> (TakPlayer, TakAction) -> Tablero   TakAction Mover Int Int [Int]   
    --colocar :: Tablero -> (TakPlayer, TakAction) -> Tablero TakAction Colocar Int Ficha
       where
-         posiblesColocarH = [Colocar cas (Horizontal activo) | cas <- posicionesVacias ] 
-         posiblesColocarV = [Colocar cas (Vertical activo) | cas <- posicionesVacias ] 
+         posiblesColocarHWhite = [Colocar cas (Horizontal WhitePlayer) | cas <- posicionesVacias ] 
+         posiblesColocarVWhite = [Colocar cas (Vertical WhitePlayer) | cas <- posicionesVacias ]
+         posiblesColocarHBlack = [Colocar cas (Horizontal BlackPlayer) | cas <- posicionesVacias ] 
+         posiblesColocarVBlack = [Colocar cas (Vertical BlackPlayer) | cas <- posicionesVacias ]
+
          posicionesVacias = [ x | x <- [0..(length tablero - 1)], casillaVacia (tablero!!x)]
          listaDesdes = posicionesDeJugador g
          desdesYHastas = foldr (++) [] (map (calculadorHacia g) listaDesdes)
          posiblesMover1 = [ (posiblesMoverEnTupla desde hasta tablero) | (desde,hasta) <- desdesYHastas]
          posiblesMover2 = foldr (++) [] posiblesMover1
+         totalFichas = (fichasDeJugador tablero WhitePlayer)+(fichasDeJugador tablero BlackPlayer)
 actions _ = error "actions: error"
 
 orientacionFicha:: Ficha -> String
@@ -322,6 +330,7 @@ readAction tablero entrada = readAction2 tablero (splitOn "," entrada)
 
 activePlayer :: TakGame -> Maybe TakPlayer
 --activePlayer tiene que verificar si alguien completo un camino, y si es así, devolver Nothing
+
 activePlayer g@(ConstructorTakGame tablero _)
    |(caminoCompleto  (ConstructorTakGame tablero WhitePlayer)) || (caminoCompleto (ConstructorTakGame tablero BlackPlayer)) = Nothing
    |sinFichas = Nothing
